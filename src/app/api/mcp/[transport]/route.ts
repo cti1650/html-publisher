@@ -24,12 +24,13 @@ const handler = createMcpHandler(
       "HTMLコンテンツを新規作成し、公開URLを取得します",
       {
         html: z.string().min(1).describe("公開するHTMLコンテンツ"),
+        memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
       },
-      async ({ html }) => {
-        const { id, rawUrl } = await createGist(html);
+      async ({ html, memo }) => {
+        const { id, rawUrl } = await createGist(html, memo);
         const url = `${getBaseUrl()}/tool/${id}`;
 
-        notifySlack({ type: "create", id, url });
+        notifySlack({ type: "create", id, url, memo });
 
         return {
           content: [
@@ -80,12 +81,13 @@ const handler = createMcpHandler(
             "ツールのID。URLの/tool/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
           ),
         html: z.string().min(1).describe("更新後のHTMLコンテンツ"),
+        memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
       },
-      async ({ id, html }) => {
-        const { rawUrl } = await updateGist(id, html);
+      async ({ id, html, memo }) => {
+        const { rawUrl } = await updateGist(id, html, memo);
         const url = `${getBaseUrl()}/tool/${id}`;
 
-        notifySlack({ type: "update", id, url });
+        notifySlack({ type: "update", id, url, memo });
 
         return {
           content: [

@@ -47,7 +47,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { html } = body;
+    const { html, memo } = body;
 
     if (!html || typeof html !== "string") {
       return NextResponse.json(
@@ -56,12 +56,12 @@ export async function PUT(
       );
     }
 
-    const { rawUrl } = await updateGist(id, html);
+    const { rawUrl } = await updateGist(id, html, memo);
 
     const baseUrl = request.nextUrl.origin;
     const url = `${baseUrl}/tool/${id}`;
 
-    notifySlack({ type: "update", id, url });
+    notifySlack({ type: "update", id, url, memo });
 
     return NextResponse.json({ id, url, rawUrl }, { status: 200 });
   } catch (error) {

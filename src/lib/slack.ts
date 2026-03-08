@@ -4,9 +4,10 @@ interface NotifyOptions {
   type: NotificationType;
   id: string;
   url: string;
+  memo?: string;
 }
 
-export async function notifySlack({ type, id, url }: NotifyOptions): Promise<void> {
+export async function notifySlack({ type, id, url, memo }: NotifyOptions): Promise<void> {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
   if (!webhookUrl) {
@@ -15,6 +16,7 @@ export async function notifySlack({ type, id, url }: NotifyOptions): Promise<voi
 
   const emoji = type === "create" ? ":new:" : ":pencil2:";
   const action = type === "create" ? "新規ツール作成" : "ツール更新";
+  const memoLine = memo ? `\nメモ: ${memo}` : "";
 
   const payload = {
     blocks: [
@@ -22,7 +24,7 @@ export async function notifySlack({ type, id, url }: NotifyOptions): Promise<voi
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `${emoji} *${action}*\nID: \`${id}\`\n<${url}|ツールを開く>`,
+          text: `${emoji} *${action}*\nID: \`${id}\`${memoLine}\n<${url}|ツールを開く>`,
         },
       },
     ],

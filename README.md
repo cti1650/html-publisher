@@ -58,7 +58,8 @@ Content-Type: application/json
 
 Request:
 {
-  "html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>"
+  "html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>",
+  "memo": "初回作成"  // 任意: 変更メモ
 }
 
 Response (201):
@@ -68,6 +69,11 @@ Response (201):
   "rawUrl": "https://gist.githubusercontent.com/..."
 }
 ```
+
+`memo`を指定すると:
+- Gistの説明に反映: `HTML Tool - 初回作成`
+- HTML内に`<meta name="tool-memo" content="初回作成">`を挿入
+- Slack通知にメモを表示
 
 ### ツール取得
 
@@ -90,7 +96,8 @@ Content-Type: application/json
 
 Request:
 {
-  "html": "<!DOCTYPE html><html><body><h1>Updated</h1></body></html>"
+  "html": "<!DOCTYPE html><html><body><h1>Updated</h1></body></html>",
+  "memo": "ボタンの色を変更"  // 任意: 変更メモ
 }
 
 Response (200):
