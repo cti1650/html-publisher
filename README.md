@@ -105,6 +105,36 @@ Response (200):
 
 外部ツール（Swagger UI、Postman、ChatGPT Actions等）にURLを渡して利用可能。
 
+## MCP Server
+
+AIエージェント（Claude、Cursor等）から直接利用可能なMCPサーバーエンドポイント。
+
+### エンドポイント
+
+```
+http://localhost:3000/api/mcp/mcp
+```
+
+### 提供ツール
+
+| ツール名 | 説明 |
+|---------|------|
+| `create_tool` | HTMLを新規作成し公開URLを取得 |
+| `get_tool` | IDからHTMLソースを取得 |
+| `update_tool` | 既存ツールのHTMLを上書き更新 |
+
+### クライアント設定例（Cursor）
+
+```json
+{
+  "mcpServers": {
+    "html-publisher": {
+      "url": "http://localhost:3000/api/mcp/mcp"
+    }
+  }
+}
+```
+
 ## Viewer
 
 `/tool/:id` にアクセスすると、HTMLがiframe sandbox内で表示されます。
@@ -121,9 +151,12 @@ Response (200):
 3. 環境変数 `GITHUB_TOKEN` を設定
 4. デプロイ
 
+※ `VERCEL_URL`は自動設定されるため、URLの設定は不要です。
+
 ## 技術スタック
 
 - Next.js (App Router)
 - TypeScript
 - Tailwind CSS
 - GitHub Gist API
+- MCP (Model Context Protocol)
