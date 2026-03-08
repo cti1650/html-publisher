@@ -73,6 +73,25 @@ Response (200):
 }
 ```
 
+### ツール更新
+
+```
+PUT /api/tools/:id
+Content-Type: application/json
+
+Request:
+{
+  "html": "<!DOCTYPE html><html><body><h1>Updated</h1></body></html>"
+}
+
+Response (200):
+{
+  "id": "abc123...",
+  "url": "https://your-domain.com/tool/abc123...",
+  "rawUrl": "https://gist.githubusercontent.com/..."
+}
+```
+
 ### OpenAPI仕様取得
 
 ```

@@ -137,6 +137,63 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "Internal server error"
+    put:
+      summary: ツールを更新
+      description: 指定されたIDのツール（HTMLコンテンツ）を更新します
+      operationId: updateTool
+      tags:
+        - Tools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ツール（Gist）のID
+          schema:
+            type: string
+          example: "abc123def456"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateToolRequest"
+            example:
+              html: "<html><body><h1>Updated Content</h1></body></html>"
+      responses:
+        "200":
+          description: ツールが正常に更新されました
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateToolResponse"
+              example:
+                id: "abc123def456"
+                url: "https://your-domain.com/tool/abc123def456"
+                rawUrl: "https://gist.githubusercontent.com/..."
+        "400":
+          description: リクエストが不正です
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "html is required and must be a string"
+        "404":
+          description: ツールが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Tool not found"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
 
 components:
   schemas:

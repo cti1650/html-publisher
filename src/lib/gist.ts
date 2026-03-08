@@ -90,3 +90,48 @@ export async function getGist(id: string): Promise<{
     rawUrl: file.raw_url,
   };
 }
+
+export async function updateGist(
+  id: string,
+  html: string
+): Promise<{
+  id: string;
+  rawUrl: string;
+}> {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    throw new Error("GITHUB_TOKEN is not set");
+  }
+
+  const response = await fetch(`${GITHUB_API}/gists/${id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      files: {
+        "index.html": {
+          content: html,
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Gist not found");
+    }
+    const error = await response.text();
+    throw new Error(`Failed to update gist: ${error}`);
+  }
+
+  const data: GistResponse = await response.json();
+  const rawUrl = data.files["index.html"].raw_url;
+
+  return {
+    id: data.id,
+    rawUrl,
+  };
+}
