@@ -57,6 +57,36 @@ paths:
               example:
                 error: "Internal server error"
 
+  /api/openapi:
+    get:
+      summary: OpenAPI仕様を取得
+      description: このAPIのOpenAPI仕様をYAMLまたはJSON形式で取得します
+      operationId: getOpenApiSpec
+      tags:
+        - Documentation
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: 出力形式（yaml または json）
+          schema:
+            type: string
+            enum:
+              - yaml
+              - json
+            default: yaml
+          example: "json"
+      responses:
+        "200":
+          description: OpenAPI仕様
+          content:
+            text/yaml:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+
   /api/tools/{id}:
     get:
       summary: ツールを取得
@@ -169,3 +199,5 @@ components:
 tags:
   - name: Tools
     description: HTMLツールの作成・取得
+  - name: Documentation
+    description: APIドキュメント
