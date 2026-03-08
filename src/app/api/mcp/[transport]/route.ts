@@ -5,9 +5,13 @@ import { verifyApiKey } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
 
 function getBaseUrl(): string {
-  // Vercel自動設定の環境変数を優先
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+  // 本番ドメインを優先（環境変数で設定可能）
+  if (process.env.BASE_URL) {
+    return process.env.BASE_URL;
+  }
+  // Vercel本番環境
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
   return "http://localhost:3000";
 }

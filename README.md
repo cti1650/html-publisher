@@ -205,6 +205,7 @@ MCPエンドポイントはAPIキー認証に対応しています。
    - `GITHUB_TOKEN`: GitHub Personal Access Token
    - `API_KEY`: MCPエンドポイント認証用キー（任意）
    - `SLACK_WEBHOOK_URL`: Slack通知用Webhook URL（任意）
+   - `BASE_URL`: ツールURLのベースドメイン（任意、例: `https://html-publisher-zeta.vercel.app`）
 4. デプロイ
 
 ※ `VERCEL_URL`は自動設定されるため、URLの設定は不要です。
