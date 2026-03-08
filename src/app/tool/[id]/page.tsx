@@ -8,11 +8,11 @@ interface PageProps {
 export default async function ToolViewerPage({ params }: PageProps) {
   const { id } = await params;
 
-  let rawUrl: string;
+  let html: string;
 
   try {
     const gist = await getGist(id);
-    rawUrl = gist.rawUrl;
+    html = gist.html;
   } catch {
     notFound();
   }
@@ -20,7 +20,7 @@ export default async function ToolViewerPage({ params }: PageProps) {
   return (
     <main className="w-full h-screen">
       <iframe
-        src={rawUrl}
+        srcDoc={html}
         sandbox="allow-scripts allow-forms"
         className="w-full h-full border-0"
         title="HTML Tool"
