@@ -123,13 +123,28 @@ http://localhost:3000/api/mcp/mcp
 | `get_tool` | IDからHTMLソースを取得 |
 | `update_tool` | 既存ツールのHTMLを上書き更新 |
 
-### クライアント設定例（Cursor）
+### クライアント設定例
+
+#### Streamable HTTP対応クライアント（Cursor等）
 
 ```json
 {
   "mcpServers": {
     "html-publisher": {
       "url": "http://localhost:3000/api/mcp/mcp"
+    }
+  }
+}
+```
+
+#### stdio専用クライアント（Claude Desktop等）
+
+```json
+{
+  "mcpServers": {
+    "html-publisher": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:3000/api/mcp/mcp"]
     }
   }
 }
