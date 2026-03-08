@@ -73,6 +73,19 @@ Response (200):
 }
 ```
 
+### OpenAPI仕様取得
+
+```
+GET /api/openapi
+GET /api/openapi?format=json
+
+Response (200):
+# YAML または JSON形式のOpenAPI仕様
+# serversはリクエスト元のドメインに動的に設定
+```
+
+外部ツール（Swagger UI、Postman、ChatGPT Actions等）にURLを渡して利用可能。
+
 ## Viewer
 
 `/tool/:id` にアクセスすると、HTMLがiframe sandbox内で表示されます。
