@@ -1,0 +1,171 @@
+openapi: 3.1.0
+info:
+  title: HTML Publisher API
+  description: HTMLコンテンツをGistに公開し、ツールとして共有するためのAPI
+  version: 1.0.0
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: ローカル開発環境
+  - url: https://your-domain.com
+    description: 本番環境
+
+paths:
+  /api/tools:
+    post:
+      summary: 新しいツールを作成
+      description: HTMLコンテンツをGistにアップロードし、公開URLを生成します
+      operationId: createTool
+      tags:
+        - Tools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateToolRequest"
+            example:
+              html: "<html><body><h1>Hello World</h1></body></html>"
+      responses:
+        "201":
+          description: ツールが正常に作成されました
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateToolResponse"
+              example:
+                id: "abc123def456"
+                url: "https://your-domain.com/tool/abc123def456"
+                rawUrl: "https://gist.githubusercontent.com/..."
+        "400":
+          description: リクエストが不正です
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "html is required and must be a string"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+
+  /api/tools/{id}:
+    get:
+      summary: ツールを取得
+      description: 指定されたIDのツール（HTMLコンテンツ）を取得します
+      operationId: getTool
+      tags:
+        - Tools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ツール（Gist）のID
+          schema:
+            type: string
+          example: "abc123def456"
+      responses:
+        "200":
+          description: ツールが正常に取得されました
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetToolResponse"
+              example:
+                id: "abc123def456"
+                html: "<html><body><h1>Hello World</h1></body></html>"
+                rawUrl: "https://gist.githubusercontent.com/..."
+        "400":
+          description: リクエストが不正です
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "id is required"
+        "404":
+          description: ツールが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Tool not found"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+
+components:
+  schemas:
+    CreateToolRequest:
+      type: object
+      required:
+        - html
+      properties:
+        html:
+          type: string
+          description: 公開するHTMLコンテンツ
+          minLength: 1
+
+    CreateToolResponse:
+      type: object
+      required:
+        - id
+        - url
+        - rawUrl
+      properties:
+        id:
+          type: string
+          description: ツール（Gist）のID
+        url:
+          type: string
+          format: uri
+          description: ツールの公開URL
+        rawUrl:
+          type: string
+          format: uri
+          description: GistのRaw URL
+
+    GetToolResponse:
+      type: object
+      required:
+        - id
+        - html
+        - rawUrl
+      properties:
+        id:
+          type: string
+          description: ツール（Gist）のID
+        html:
+          type: string
+          description: HTMLコンテンツ
+        rawUrl:
+          type: string
+          format: uri
+          description: GistのRaw URL
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: エラーメッセージ
+
+tags:
+  - name: Tools
+    description: HTMLツールの作成・取得

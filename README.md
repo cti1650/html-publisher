@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HTML Publisher
 
-## Getting Started
+ChatGPTなどで生成した単一HTMLファイルをAPI経由で公開し、URLを取得できるツール。
 
-First, run the development server:
+## 機能
+
+- HTMLファイルをAPI経由で登録
+- GitHub Gistに保存
+- 公開URLを発行
+- iframe sandboxで安全に実行
+
+## 環境構築
+
+### 1. 依存関係のインストール
+
+```bash
+npm install
+```
+
+### 2. 環境変数の設定
+
+`.env.local`を作成し、GitHub Personal Access Token を設定：
+
+```env
+GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+```
+
+GitHub Personal Access Token (PAT) の作成方法：
+1. https://github.com/settings/tokens にアクセス
+2. "Generate new token (classic)" をクリック
+3. `gist` スコープにチェックを入れる
+4. トークンを生成してコピー
+
+### 3. 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 で起動します。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API仕様
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### HTML登録
 
-## Learn More
+```
+POST /api/tools
+Content-Type: application/json
 
-To learn more about Next.js, take a look at the following resources:
+Request:
+{
+  "html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>"
+}
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Response (201):
+{
+  "id": "abc123...",
+  "url": "https://your-domain.com/tool/abc123...",
+  "rawUrl": "https://gist.githubusercontent.com/..."
+}
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### ツール取得
 
-## Deploy on Vercel
+```
+GET /api/tools/:id
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Response (200):
+{
+  "id": "abc123...",
+  "html": "<!DOCTYPE html>...",
+  "rawUrl": "https://gist.githubusercontent.com/..."
+}
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Viewer
+
+`/tool/:id` にアクセスすると、HTMLがiframe sandbox内で表示されます。
+
+### セキュリティ
+
+- `sandbox="allow-scripts allow-forms"` で実行
+- top navigation、cookie access、parent access は禁止
+
+## デプロイ (Vercel)
+
+1. GitHubにリポジトリを作成してプッシュ
+2. Vercelでリポジトリをインポート
+3. 環境変数 `GITHUB_TOKEN` を設定
+4. デプロイ
+
+## 技術スタック
+
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- GitHub Gist API
