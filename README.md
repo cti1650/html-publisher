@@ -187,7 +187,7 @@ MCPエンドポイントはAPIキー認証に対応しています。
 
 ### セキュリティ
 
-- `sandbox="allow-scripts allow-forms"` で実行
+- `sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"` で実行
 - 以下のPermissions Policyを許可:
   - `geolocation` - 位置情報
   - `accelerometer`, `gyroscope`, `magnetometer` - センサー
