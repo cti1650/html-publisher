@@ -188,7 +188,13 @@ MCPエンドポイントはAPIキー認証に対応しています。
 ### セキュリティ
 
 - `sandbox="allow-scripts allow-forms"` で実行
-- `allow="geolocation; accelerometer; gyroscope; magnetometer"` でセンサーアクセス許可
+- 以下のPermissions Policyを許可:
+  - `geolocation` - 位置情報
+  - `accelerometer`, `gyroscope`, `magnetometer` - センサー
+  - `camera`, `microphone` - カメラ・マイク
+  - `fullscreen` - フルスクリーン
+  - `clipboard-read`, `clipboard-write` - クリップボード
+  - `web-share` - Web Share API
 - top navigation、cookie access、parent access は禁止
 
 ## デプロイ (Vercel)
