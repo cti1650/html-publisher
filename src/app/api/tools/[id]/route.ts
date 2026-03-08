@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGist, updateGist } from "@/lib/gist";
 import { verifyApiKey, unauthorizedResponse } from "@/lib/auth";
+import { notifySlack } from "@/lib/slack";
 
 export async function GET(
   request: NextRequest,
@@ -59,6 +60,8 @@ export async function PUT(
 
     const baseUrl = request.nextUrl.origin;
     const url = `${baseUrl}/tool/${id}`;
+
+    notifySlack({ type: "update", id, url });
 
     return NextResponse.json({ id, url, rawUrl }, { status: 200 });
   } catch (error) {

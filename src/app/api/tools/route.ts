@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGist } from "@/lib/gist";
 import { verifyApiKey, unauthorizedResponse } from "@/lib/auth";
+import { notifySlack } from "@/lib/slack";
 
 export async function POST(request: NextRequest) {
   if (!verifyApiKey(request)) {
@@ -22,6 +23,8 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = request.nextUrl.origin;
     const url = `${baseUrl}/tool/${id}`;
+
+    notifySlack({ type: "create", id, url });
 
     return NextResponse.json({ id, url, rawUrl }, { status: 201 });
   } catch (error) {

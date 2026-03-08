@@ -2,6 +2,7 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { createGist, getGist, updateGist } from "@/lib/gist";
 import { verifyApiKey } from "@/lib/auth";
+import { notifySlack } from "@/lib/slack";
 
 function getBaseUrl(): string {
   // Vercel自動設定の環境変数を優先
@@ -23,6 +24,8 @@ const handler = createMcpHandler(
       async ({ html }) => {
         const { id, rawUrl } = await createGist(html);
         const url = `${getBaseUrl()}/tool/${id}`;
+
+        notifySlack({ type: "create", id, url });
 
         return {
           content: [
@@ -77,6 +80,8 @@ const handler = createMcpHandler(
       async ({ id, html }) => {
         const { rawUrl } = await updateGist(id, html);
         const url = `${getBaseUrl()}/tool/${id}`;
+
+        notifySlack({ type: "update", id, url });
 
         return {
           content: [
