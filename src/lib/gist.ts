@@ -29,7 +29,7 @@ export async function createGist(html: string): Promise<{
     },
     body: JSON.stringify({
       description: "HTML Tool",
-      public: true,
+      public: false,
       files: {
         "index.html": {
           content: html,
