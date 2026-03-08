@@ -10,7 +10,11 @@ info:
     `POST /api/tools` でHTMLを送信すると、Gistに保存されIDとURLが返されます。
 
     ### 2. 閲覧
-    返されたURL（例: `https://example.com/tool/abc123`）にアクセスするとHTMLが表示されます。
+    - **ブラウザで表示**: 返されたURL（例: `https://example.com/tool/abc123`）にアクセス
+    - **HTMLソースを取得**: `GET /api/tools/{id}` でHTMLコンテンツをJSON形式で取得
+
+    **注意**: `/tool/{id}` はSPAページのため、APIからは直接読み取れません。
+    HTMLの中身を確認・取得するには必ず `GET /api/tools/{id}` を使用してください。
 
     ### 3. 更新
     既存のツールを更新するには `PUT /api/tools/{id}` を使用します。
@@ -112,8 +116,14 @@ paths:
 
   /api/tools/{id}:
     get:
-      summary: ツールを取得
-      description: 指定されたIDのツール（HTMLコンテンツ）を取得します
+      summary: ツールのHTMLソースを取得
+      description: |
+        指定されたIDのツールのHTMLコンテンツを取得します。
+
+        **重要**: `/tool/{id}` はブラウザ表示用のSPAページです。
+        HTMLの中身を確認・取得するには、このAPIエンドポイント `GET /api/tools/{id}` を使用してください。
+
+        レスポンスの `html` フィールドに完全なHTMLソースが含まれます。
       operationId: getTool
       tags:
         - Tools
@@ -121,7 +131,9 @@ paths:
         - name: id
           in: path
           required: true
-          description: ツール（Gist）のID
+          description: |
+            ツールのID。URLの `/tool/` の後ろの部分です。
+            例: URLが `https://example.com/tool/abc123def456` の場合、IDは `abc123def456`
           schema:
             type: string
           example: "abc123def456"
