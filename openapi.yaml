@@ -1,7 +1,25 @@
 openapi: 3.1.0
 info:
   title: HTML Publisher API
-  description: HTMLコンテンツをGistに公開し、ツールとして共有するためのAPI
+  description: |
+    HTMLコンテンツをGitHub Gistに公開し、ツールとして共有するためのAPI。
+
+    ## 基本的な使い方
+
+    ### 1. 新規作成
+    `POST /api/tools` でHTMLを送信すると、Gistに保存されIDとURLが返されます。
+
+    ### 2. 閲覧
+    返されたURL（例: `https://example.com/tool/abc123`）にアクセスするとHTMLが表示されます。
+
+    ### 3. 更新
+    既存のツールを更新するには `PUT /api/tools/{id}` を使用します。
+    IDはURLの末尾部分です（例: URLが `https://example.com/tool/abc123` の場合、IDは `abc123`）。
+
+    ### IDの特定方法
+    - 作成時のレスポンスに含まれる `id` フィールド
+    - ツールURL `/tool/{id}` の `{id}` 部分
+    - 例: `https://example.com/tool/abc123def456` → ID: `abc123def456`
   version: 1.0.0
   license:
     name: MIT
@@ -17,7 +35,12 @@ paths:
   /api/tools:
     post:
       summary: 新しいツールを作成
-      description: HTMLコンテンツをGistにアップロードし、公開URLを生成します
+      description: |
+        HTMLコンテンツをGitHub Gistにアップロードし、公開URLを生成します。
+
+        レスポンスに含まれる `id` と `url` を保存してください。
+        - `url`: ブラウザで開くとHTMLが表示されるURL
+        - `id`: 後で更新する際に使用するID（URLの末尾部分と同じ）
       operationId: createTool
       tags:
         - Tools
@@ -138,8 +161,15 @@ paths:
               example:
                 error: "Internal server error"
     put:
-      summary: ツールを更新
-      description: 指定されたIDのツール（HTMLコンテンツ）を更新します
+      summary: ツールを更新（HTML上書き）
+      description: |
+        指定されたIDのツールのHTMLコンテンツを上書き更新します。
+
+        **IDの取得方法:**
+        - 作成時のレスポンスに含まれる `id` フィールド
+        - ツールURL `/tool/{id}` から抽出（例: `https://example.com/tool/abc123` → `abc123`）
+
+        更新後もURLは変わりません。同じURLで新しいHTMLが表示されます。
       operationId: updateTool
       tags:
         - Tools
@@ -147,7 +177,9 @@ paths:
         - name: id
           in: path
           required: true
-          description: ツール（Gist）のID
+          description: |
+            ツールのID。URLの `/tool/` の後ろの部分です。
+            例: URLが `https://example.com/tool/abc123def456` の場合、IDは `abc123def456`
           schema:
             type: string
           example: "abc123def456"
@@ -255,6 +287,12 @@ components:
 
 tags:
   - name: Tools
-    description: HTMLツールの作成・取得
+    description: |
+      HTMLツールの作成・取得・更新。
+
+      **ワークフロー:**
+      1. `POST /api/tools` で新規作成 → IDとURLを取得
+      2. URLにアクセスしてHTMLを確認
+      3. 修正が必要な場合は `PUT /api/tools/{id}` で上書き更新
   - name: Documentation
     description: APIドキュメント
