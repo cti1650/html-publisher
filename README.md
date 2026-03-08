@@ -41,10 +41,19 @@ http://localhost:3000 で起動します。
 
 ## API仕様
 
+### 認証
+
+書き込み系API（POST, PUT）はAPIキー認証に対応しています。
+
+- クエリパラメータ: `?key=your-api-key`
+- ヘッダー: `X-API-Key: your-api-key`
+
+※ `API_KEY`が未設定の場合、認証はスキップされます（ローカル開発用）。
+
 ### HTML登録
 
 ```
-POST /api/tools
+POST /api/tools?key=your-api-key
 Content-Type: application/json
 
 Request:
@@ -76,7 +85,7 @@ Response (200):
 ### ツール更新
 
 ```
-PUT /api/tools/:id
+PUT /api/tools/:id?key=your-api-key
 Content-Type: application/json
 
 Request:
@@ -115,6 +124,26 @@ AIエージェント（Claude、Cursor等）から直接利用可能なMCPサー
 http://localhost:3000/api/mcp/mcp
 ```
 
+### 認証
+
+MCPエンドポイントはAPIキー認証に対応しています。
+
+1. APIキーを生成：
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. 環境変数に設定：
+   ```env
+   API_KEY=your-generated-key
+   ```
+
+3. リクエスト時にキーを渡す：
+   - クエリパラメータ: `?key=your-key`
+   - ヘッダー: `X-API-Key: your-key`
+
+※ `API_KEY`が未設定の場合、認証はスキップされます（ローカル開発用）。
+
 ### 提供ツール
 
 | ツール名 | 説明 |
@@ -131,7 +160,7 @@ http://localhost:3000/api/mcp/mcp
 {
   "mcpServers": {
     "html-publisher": {
-      "url": "http://localhost:3000/api/mcp/mcp"
+      "url": "http://localhost:3000/api/mcp/mcp?key=your-api-key"
     }
   }
 }
@@ -144,7 +173,7 @@ http://localhost:3000/api/mcp/mcp
   "mcpServers": {
     "html-publisher": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:3000/api/mcp/mcp"]
+      "args": ["-y", "mcp-remote", "http://localhost:3000/api/mcp/mcp?key=your-api-key"]
     }
   }
 }
@@ -163,7 +192,9 @@ http://localhost:3000/api/mcp/mcp
 
 1. GitHubにリポジトリを作成してプッシュ
 2. Vercelでリポジトリをインポート
-3. 環境変数 `GITHUB_TOKEN` を設定
+3. 環境変数を設定：
+   - `GITHUB_TOKEN`: GitHub Personal Access Token
+   - `API_KEY`: MCPエンドポイント認証用キー（任意）
 4. デプロイ
 
 ※ `VERCEL_URL`は自動設定されるため、URLの設定は不要です。

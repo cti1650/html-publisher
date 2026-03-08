@@ -1,6 +1,7 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { createGist, getGist, updateGist } from "@/lib/gist";
+import { verifyApiKey } from "@/lib/auth";
 
 function getBaseUrl(): string {
   // Vercel自動設定の環境変数を優先
@@ -100,4 +101,20 @@ const handler = createMcpHandler(
   }
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+function withApiKeyAuth(
+  mcpHandler: (request: Request) => Promise<Response>
+): (request: Request) => Promise<Response> {
+  return async (request: Request) => {
+    if (!verifyApiKey(request)) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return mcpHandler(request);
+  };
+}
+
+const authHandler = withApiKeyAuth(handler);
+
+export { authHandler as GET, authHandler as POST, authHandler as DELETE };

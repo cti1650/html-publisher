@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGist } from "@/lib/gist";
+import { verifyApiKey, unauthorizedResponse } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
+  if (!verifyApiKey(request)) {
+    return unauthorizedResponse();
+  }
+
   try {
     const body = await request.json();
     const { html } = body;

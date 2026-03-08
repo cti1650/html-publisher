@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGist, updateGist } from "@/lib/gist";
+import { verifyApiKey, unauthorizedResponse } from "@/lib/auth";
 
 export async function GET(
   request: NextRequest,
@@ -33,6 +34,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!verifyApiKey(request)) {
+    return unauthorizedResponse();
+  }
+
   try {
     const { id } = await params;
 
