@@ -89,8 +89,10 @@ const handler = createMcpHandler(
     );
   },
   {
-    name: "html-publisher",
-    version: "1.0.0",
+    serverInfo: {
+      name: "html-publisher",
+      version: "1.0.0",
+    },
   },
   {
     basePath: "/api/mcp",
