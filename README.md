@@ -64,7 +64,7 @@ Request:
 Response (201):
 {
   "id": "abc123...",
-  "url": "https://your-domain.com/tool/abc123...",
+  "url": "https://html-publisher-zeta.vercel.app/tool/abc123...",
   "rawUrl": "https://gist.githubusercontent.com/..."
 }
 ```
@@ -96,7 +96,7 @@ Request:
 Response (200):
 {
   "id": "abc123...",
-  "url": "https://your-domain.com/tool/abc123...",
+  "url": "https://html-publisher-zeta.vercel.app/tool/abc123...",
   "rawUrl": "https://gist.githubusercontent.com/..."
 }
 ```
@@ -121,8 +121,10 @@ AIエージェント（Claude、Cursor等）から直接利用可能なMCPサー
 ### エンドポイント
 
 ```
-http://localhost:3000/api/mcp/mcp
+https://html-publisher-zeta.vercel.app/api/mcp/mcp
 ```
+
+ローカル開発時は `http://localhost:3000/api/mcp/mcp` を使用してください。
 
 ### 認証
 
@@ -160,7 +162,7 @@ MCPエンドポイントはAPIキー認証に対応しています。
 {
   "mcpServers": {
     "html-publisher": {
-      "url": "http://localhost:3000/api/mcp/mcp?key=your-api-key"
+      "url": "https://html-publisher-zeta.vercel.app/api/mcp/mcp?key=your-api-key"
     }
   }
 }
@@ -173,7 +175,7 @@ MCPエンドポイントはAPIキー認証に対応しています。
   "mcpServers": {
     "html-publisher": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:3000/api/mcp/mcp?key=your-api-key"]
+      "args": ["-y", "mcp-remote", "https://html-publisher-zeta.vercel.app/api/mcp/mcp?key=your-api-key"]
     }
   }
 }

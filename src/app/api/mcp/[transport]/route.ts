@@ -44,7 +44,7 @@ const handler = createMcpHandler(
           .string()
           .min(1)
           .describe(
-            "ツールのID。URLの/tool/の後ろの部分です（例: https://example.com/tool/abc123 → abc123）"
+            "ツールのID。URLの/tool/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
           ),
       },
       async ({ id }) => {
@@ -70,7 +70,7 @@ const handler = createMcpHandler(
           .string()
           .min(1)
           .describe(
-            "ツールのID。URLの/tool/の後ろの部分です（例: https://example.com/tool/abc123 → abc123）"
+            "ツールのID。URLの/tool/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
           ),
         html: z.string().min(1).describe("更新後のHTMLコンテンツ"),
       },

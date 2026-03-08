@@ -10,7 +10,7 @@ info:
     `POST /api/tools` でHTMLを送信すると、Gistに保存されIDとURLが返されます。
 
     ### 2. 閲覧
-    - **ブラウザで表示**: 返されたURL（例: `https://example.com/tool/abc123`）にアクセス
+    - **ブラウザで表示**: 返されたURL（例: `https://html-publisher-zeta.vercel.app/tool/abc123`）にアクセス
     - **HTMLソースを取得**: `GET /api/tools/{id}` でHTMLコンテンツをJSON形式で取得
 
     **注意**: `/tool/{id}` はSPAページのため、APIからは直接読み取れません。
@@ -18,22 +18,22 @@ info:
 
     ### 3. 更新
     既存のツールを更新するには `PUT /api/tools/{id}` を使用します。
-    IDはURLの末尾部分です（例: URLが `https://example.com/tool/abc123` の場合、IDは `abc123`）。
+    IDはURLの末尾部分です（例: URLが `https://html-publisher-zeta.vercel.app/tool/abc123` の場合、IDは `abc123`）。
 
     ### IDの特定方法
     - 作成時のレスポンスに含まれる `id` フィールド
     - ツールURL `/tool/{id}` の `{id}` 部分
-    - 例: `https://example.com/tool/abc123def456` → ID: `abc123def456`
+    - 例: `https://html-publisher-zeta.vercel.app/tool/abc123def456` → ID: `abc123def456`
   version: 1.0.0
   license:
     name: MIT
     identifier: MIT
 
 servers:
+  - url: https://html-publisher-zeta.vercel.app
+    description: 本番環境
   - url: http://localhost:3000
     description: ローカル開発環境
-  - url: https://your-domain.com
-    description: 本番環境
 
 paths:
   /api/tools:
@@ -133,7 +133,7 @@ paths:
           required: true
           description: |
             ツールのID。URLの `/tool/` の後ろの部分です。
-            例: URLが `https://example.com/tool/abc123def456` の場合、IDは `abc123def456`
+            例: URLが `https://html-publisher-zeta.vercel.app/tool/abc123def456` の場合、IDは `abc123def456`
           schema:
             type: string
           example: "abc123def456"
@@ -179,7 +179,7 @@ paths:
 
         **IDの取得方法:**
         - 作成時のレスポンスに含まれる `id` フィールド
-        - ツールURL `/tool/{id}` から抽出（例: `https://example.com/tool/abc123` → `abc123`）
+        - ツールURL `/tool/{id}` から抽出（例: `https://html-publisher-zeta.vercel.app/tool/abc123` → `abc123`）
 
         更新後もURLは変わりません。同じURLで新しいHTMLが表示されます。
       operationId: updateTool
@@ -191,7 +191,7 @@ paths:
           required: true
           description: |
             ツールのID。URLの `/tool/` の後ろの部分です。
-            例: URLが `https://example.com/tool/abc123def456` の場合、IDは `abc123def456`
+            例: URLが `https://html-publisher-zeta.vercel.app/tool/abc123def456` の場合、IDは `abc123def456`
           schema:
             type: string
           example: "abc123def456"
