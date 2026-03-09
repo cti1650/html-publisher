@@ -36,7 +36,7 @@ const handler = createMcpHandler(
         const toolPath = result.trust ? "tool-trust" : "tool";
         const url = `${getBaseUrl()}/${toolPath}/${result.id}`;
 
-        notifySlack({ type: "create", id: result.id, url, name: result.name, memo: result.memo, trust: result.trust });
+        await notifySlack({ type: "create", id: result.id, url, name: result.name, memo: result.memo, trust: result.trust });
 
         return {
           content: [
@@ -105,7 +105,7 @@ const handler = createMcpHandler(
         const url = `${getBaseUrl()}/${toolPath}/${id}`;
 
         // updateGistから返されたname/memo/trustを使用（既存の値がマージされている）
-        notifySlack({ type: "update", id, url, name: result.name, memo: result.memo, trust: result.trust });
+        await notifySlack({ type: "update", id, url, name: result.name, memo: result.memo, trust: result.trust });
 
         return {
           content: [

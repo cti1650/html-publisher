@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const toolPath = result.trust ? "tool-trust" : "tool";
     const url = `${baseUrl}/${toolPath}/${result.id}`;
 
-    notifySlack({ type: "create", id: result.id, url, name: result.name, memo: result.memo, trust: result.trust });
+    await notifySlack({ type: "create", id: result.id, url, name: result.name, memo: result.memo, trust: result.trust });
 
     return NextResponse.json({ id: result.id, url, rawUrl: result.rawUrl, trust: result.trust }, { status: 201 });
   } catch (error) {
