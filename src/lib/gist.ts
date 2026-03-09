@@ -13,6 +13,22 @@ interface GistOptions {
   memo?: string;
 }
 
+function extractMetaFromHtml(html: string): { name?: string; memo?: string } {
+  const nameMatch = html.match(/<meta\s+name="tool-name"\s+content="([^"]*)"/);
+  const memoMatch = html.match(/<meta\s+name="tool-memo"\s+content="([^"]*)"/);
+
+  return {
+    name: nameMatch ? nameMatch[1].replace(/&quot;/g, '"') : undefined,
+    memo: memoMatch ? memoMatch[1].replace(/&quot;/g, '"') : undefined,
+  };
+}
+
+function removeMetaTags(html: string): string {
+  return html
+    .replace(/<meta\s+name="tool-name"\s+content="[^"]*">\n?\s*/g, "")
+    .replace(/<meta\s+name="tool-memo"\s+content="[^"]*">\n?\s*/g, "");
+}
+
 function insertMetaTags(html: string, options: GistOptions): string {
   const tags: string[] = [];
 
@@ -168,14 +184,26 @@ export async function updateGist(
 ): Promise<{
   id: string;
   rawUrl: string;
+  name?: string;
+  memo?: string;
 }> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
     throw new Error("GITHUB_TOKEN is not set");
   }
 
-  const opts = options || {};
-  const withMeta = insertMetaTags(html, opts);
+  // 入力HTMLから既存のメタ情報を抽出
+  const existingMeta = extractMetaFromHtml(html);
+  // 既存のメタタグを除去してからマージ
+  const cleanHtml = removeMetaTags(html);
+
+  // 新しいオプションと既存のメタ情報をマージ（新しい値が優先）
+  const opts: GistOptions = {
+    name: options?.name ?? existingMeta.name,
+    memo: options?.memo ?? existingMeta.memo,
+  };
+
+  const withMeta = insertMetaTags(cleanHtml, opts);
   const content = await formatHtml(withMeta);
   const description = buildDescription(opts);
 
@@ -210,5 +238,7 @@ export async function updateGist(
   return {
     id: data.id,
     rawUrl,
+    name: opts.name,
+    memo: opts.memo,
   };
 }

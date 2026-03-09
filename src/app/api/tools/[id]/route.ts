@@ -56,14 +56,15 @@ export async function PUT(
       );
     }
 
-    const { rawUrl } = await updateGist(id, html, { name, memo });
+    const result = await updateGist(id, html, { name, memo });
 
     const baseUrl = request.nextUrl.origin;
     const url = `${baseUrl}/tool/${id}`;
 
-    notifySlack({ type: "update", id, url, name, memo });
+    // updateGistから返されたname/memoを使用（既存の値がマージされている）
+    notifySlack({ type: "update", id, url, name: result.name, memo: result.memo });
 
-    return NextResponse.json({ id, url, rawUrl }, { status: 200 });
+    return NextResponse.json({ id, url, rawUrl: result.rawUrl }, { status: 200 });
   } catch (error) {
     console.error("Error updating tool:", error);
 

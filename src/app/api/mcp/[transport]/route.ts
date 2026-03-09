@@ -86,16 +86,17 @@ const handler = createMcpHandler(
         memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
       },
       async ({ id, html, name, memo }) => {
-        const { rawUrl } = await updateGist(id, html, { name, memo });
+        const result = await updateGist(id, html, { name, memo });
         const url = `${getBaseUrl()}/tool/${id}`;
 
-        notifySlack({ type: "update", id, url, name, memo });
+        // updateGistから返されたname/memoを使用（既存の値がマージされている）
+        notifySlack({ type: "update", id, url, name: result.name, memo: result.memo });
 
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify({ id, url, rawUrl }, null, 2),
+              text: JSON.stringify({ id, url, rawUrl: result.rawUrl }, null, 2),
             },
           ],
         };
