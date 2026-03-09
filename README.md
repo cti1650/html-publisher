@@ -48,7 +48,10 @@ http://localhost:3000 で起動します。
 - クエリパラメータ: `?key=your-api-key`
 - ヘッダー: `X-API-Key: your-api-key`
 
-※ `API_KEY`が未設定の場合、認証はスキップされます（ローカル開発用）。
+API_KEYは`SECRET`と`GITHUB_TOKEN`のハッシュから動的に検証されます。
+詳細は「MCP Server > 認証」セクションを参照してください。
+
+※ `SECRET`が未設定の場合、認証はスキップされます（ローカル開発用）。
 
 ### HTML登録
 
@@ -138,23 +141,32 @@ https://html-publisher-zeta.vercel.app/api/mcp/mcp
 
 ### 認証
 
-MCPエンドポイントはAPIキー認証に対応しています。
+MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`SECRET`と`GITHUB_TOKEN`から動的に生成されます。
 
-1. APIキーを生成：
+1. SECRETを生成して環境変数に設定：
    ```bash
    openssl rand -hex 32
    ```
-
-2. 環境変数に設定：
    ```env
-   API_KEY=your-generated-key
+   SECRET=your-generated-secret
+   GITHUB_TOKEN=ghp_xxxxxxxxxxxx
    ```
 
-3. リクエスト時にキーを渡す：
-   - クエリパラメータ: `?key=your-key`
-   - ヘッダー: `X-API-Key: your-key`
+2. API_KEYを生成：
+   ```bash
+   npm run generate-api-key
+   ```
+   または手動で：
+   ```bash
+   echo -n "${SECRET}${GITHUB_TOKEN}" | shasum -a 256
+   ```
 
-※ `API_KEY`が未設定の場合、認証はスキップされます（ローカル開発用）。
+3. リクエスト時にAPI_KEYを渡す：
+   - クエリパラメータ: `?key=your-api-key`
+   - ヘッダー: `X-API-Key: your-api-key`
+
+※ `SECRET`が未設定の場合、認証はスキップされます（ローカル開発用）。
+※ `GITHUB_TOKEN`を変更するとAPI_KEYも変わるため、古いキーは無効化されます。
 
 ### 提供ツール
 
@@ -213,7 +225,7 @@ MCPエンドポイントはAPIキー認証に対応しています。
 2. Vercelでリポジトリをインポート
 3. 環境変数を設定：
    - `GITHUB_TOKEN`: GitHub Personal Access Token
-   - `API_KEY`: MCPエンドポイント認証用キー（任意）
+   - `SECRET`: API_KEY生成用シークレット（任意、設定推奨）
    - `SLACK_WEBHOOK_URL`: Slack通知用Webhook URL（任意）
    - `BASE_URL`: ツールURLのベースドメイン（任意、例: `https://html-publisher-zeta.vercel.app`）
 4. デプロイ

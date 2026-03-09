@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-api-key": "node scripts/generate-api-key.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.2",
