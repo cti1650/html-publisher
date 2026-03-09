@@ -10,7 +10,7 @@
     "generate-api-key": "node scripts/generate-api-key.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "js-yaml": "^4.1.1",
     "mcp-handler": "^1.0.7",
     "next": "16.1.6",
