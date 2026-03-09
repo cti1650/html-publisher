@@ -1,3 +1,5 @@
+import * as prettier from "prettier";
+
 const GITHUB_API = "https://api.github.com";
 
 interface GistResponse {
@@ -57,6 +59,20 @@ function buildDescription(options: GistOptions): string {
   return parts.join(" - ");
 }
 
+async function formatHtml(html: string): Promise<string> {
+  try {
+    return await prettier.format(html, {
+      parser: "html",
+      printWidth: 120,
+      tabWidth: 2,
+      useTabs: false,
+    });
+  } catch {
+    // フォーマットに失敗した場合は元のHTMLをそのまま返す
+    return html;
+  }
+}
+
 export async function createGist(
   html: string,
   options?: GistOptions
@@ -70,7 +86,8 @@ export async function createGist(
   }
 
   const opts = options || {};
-  const content = insertMetaTags(html, opts);
+  const withMeta = insertMetaTags(html, opts);
+  const content = await formatHtml(withMeta);
   const description = buildDescription(opts);
 
   const response = await fetch(`${GITHUB_API}/gists`, {
@@ -158,7 +175,8 @@ export async function updateGist(
   }
 
   const opts = options || {};
-  const content = insertMetaTags(html, opts);
+  const withMeta = insertMetaTags(html, opts);
+  const content = await formatHtml(withMeta);
   const description = buildDescription(opts);
 
   const response = await fetch(`${GITHUB_API}/gists/${id}`, {
