@@ -37,13 +37,56 @@ servers:
 
 paths:
   /api/tools:
+    get:
+      summary: ツール一覧を取得
+      description: |
+        直近で作成・更新されたツールの一覧を取得します（最大10件）。
+        HTMLソースは含まれません。
+      operationId: listTools
+      tags:
+        - Tools
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: 取得件数（1-10、デフォルト10）
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 10
+          example: 5
+      responses:
+        "200":
+          description: ツール一覧が正常に取得されました
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ToolSummary"
+              example:
+                - id: "abc123def456"
+                  name: "コンパスアプリ"
+                  memo: "方位を表示"
+                  trust: true
+                  url: "https://your-domain.com/tool-trust/abc123def456"
+                  updatedAt: "2024-01-15T12:00:00Z"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
     post:
       summary: 新しいツールを作成
       description: |
         HTMLコンテンツをGitHub Gistにアップロードし、公開URLを生成します。
 
         レスポンスに含まれる `id` と `url` を保存してください。
-        - `url`: ブラウザで開くとHTMLが表示されるURL
+        - `url`: ブラウザで開くとHTMLが表示されるURL（trustの値によって `/tool/` または `/tool-trust/` になります）
         - `id`: 後で更新する際に使用するID（URLの末尾部分と同じ）
       operationId: createTool
       tags:
@@ -56,6 +99,9 @@ paths:
               $ref: "#/components/schemas/CreateToolRequest"
             example:
               html: "<html><body><h1>Hello World</h1></body></html>"
+              name: "サンプルツール"
+              memo: "初回作成"
+              trust: false
       responses:
         "201":
           description: ツールが正常に作成されました
@@ -67,6 +113,7 @@ paths:
                 id: "abc123def456"
                 url: "https://your-domain.com/tool/abc123def456"
                 rawUrl: "https://gist.githubusercontent.com/..."
+                trust: false
         "400":
           description: リクエストが不正です
           content:
@@ -120,7 +167,7 @@ paths:
       description: |
         指定されたIDのツールのHTMLコンテンツを取得します。
 
-        **重要**: `/tool/{id}` はブラウザ表示用のSPAページです。
+        **重要**: `/tool/{id}` または `/tool-trust/{id}` はブラウザ表示用のSPAページです。
         HTMLの中身を確認・取得するには、このAPIエンドポイント `GET /api/tools/{id}` を使用してください。
 
         レスポンスの `html` フィールドに完全なHTMLソースが含まれます。
@@ -132,7 +179,7 @@ paths:
           in: path
           required: true
           description: |
-            ツールのID。URLの `/tool/` の後ろの部分です。
+            ツールのID。URLの `/tool/` または `/tool-trust/` の後ろの部分です。
             例: URLが `https://html-publisher-zeta.vercel.app/tool/abc123def456` の場合、IDは `abc123def456`
           schema:
             type: string
@@ -148,6 +195,8 @@ paths:
                 id: "abc123def456"
                 html: "<html><body><h1>Hello World</h1></body></html>"
                 rawUrl: "https://gist.githubusercontent.com/..."
+                url: "https://your-domain.com/tool/abc123def456"
+                trust: false
         "400":
           description: リクエストが不正です
           content:
@@ -179,9 +228,9 @@ paths:
 
         **IDの取得方法:**
         - 作成時のレスポンスに含まれる `id` フィールド
-        - ツールURL `/tool/{id}` から抽出（例: `https://html-publisher-zeta.vercel.app/tool/abc123` → `abc123`）
+        - ツールURL `/tool/{id}` または `/tool-trust/{id}` から抽出（例: `https://html-publisher-zeta.vercel.app/tool/abc123` → `abc123`）
 
-        更新後もURLは変わりません。同じURLで新しいHTMLが表示されます。
+        `trust` フラグを変更すると、URLのパスが `/tool/` から `/tool-trust/` に変わります（またはその逆）。
       operationId: updateTool
       tags:
         - Tools
@@ -190,7 +239,7 @@ paths:
           in: path
           required: true
           description: |
-            ツールのID。URLの `/tool/` の後ろの部分です。
+            ツールのID。URLの `/tool/` または `/tool-trust/` の後ろの部分です。
             例: URLが `https://html-publisher-zeta.vercel.app/tool/abc123def456` の場合、IDは `abc123def456`
           schema:
             type: string
@@ -203,6 +252,9 @@ paths:
               $ref: "#/components/schemas/CreateToolRequest"
             example:
               html: "<html><body><h1>Updated Content</h1></body></html>"
+              name: "更新されたツール"
+              memo: "ボタンの色を変更"
+              trust: true
       responses:
         "200":
           description: ツールが正常に更新されました
@@ -212,8 +264,9 @@ paths:
                 $ref: "#/components/schemas/CreateToolResponse"
               example:
                 id: "abc123def456"
-                url: "https://your-domain.com/tool/abc123def456"
+                url: "https://your-domain.com/tool-trust/abc123def456"
                 rawUrl: "https://gist.githubusercontent.com/..."
+                trust: true
         "400":
           description: リクエストが不正です
           content:
@@ -250,6 +303,17 @@ components:
           type: string
           description: 公開するHTMLコンテンツ
           minLength: 1
+        name:
+          type: string
+          description: ツール名（任意）。Gist説明とHTML内metaタグに反映されます
+        memo:
+          type: string
+          description: 変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます
+        trust:
+          type: boolean
+          description: |
+            信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します。
+            URLは `/tool-trust/{id}` になります。
 
     CreateToolResponse:
       type: object
@@ -264,11 +328,14 @@ components:
         url:
           type: string
           format: uri
-          description: ツールの公開URL
+          description: ツールの公開URL（trustの値によって `/tool/` または `/tool-trust/` になります）
         rawUrl:
           type: string
           format: uri
           description: GistのRaw URL
+        trust:
+          type: boolean
+          description: 信頼モードが有効かどうか
 
     GetToolResponse:
       type: object
@@ -276,6 +343,7 @@ components:
         - id
         - html
         - rawUrl
+        - url
       properties:
         id:
           type: string
@@ -287,6 +355,41 @@ components:
           type: string
           format: uri
           description: GistのRaw URL
+        url:
+          type: string
+          format: uri
+          description: ツールの公開URL
+        trust:
+          type: boolean
+          description: 信頼モードが有効かどうか
+
+    ToolSummary:
+      type: object
+      required:
+        - id
+        - url
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: ツール（Gist）のID
+        name:
+          type: string
+          description: ツール名
+        memo:
+          type: string
+          description: 変更メモ
+        trust:
+          type: boolean
+          description: 信頼モードが有効かどうか
+        url:
+          type: string
+          format: uri
+          description: ツールの公開URL
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最終更新日時
 
     ErrorResponse:
       type: object
@@ -300,11 +403,16 @@ components:
 tags:
   - name: Tools
     description: |
-      HTMLツールの作成・取得・更新。
+      HTMLツールの作成・取得・更新・一覧。
 
       **ワークフロー:**
-      1. `POST /api/tools` で新規作成 → IDとURLを取得
-      2. URLにアクセスしてHTMLを確認
-      3. 修正が必要な場合は `PUT /api/tools/{id}` で上書き更新
+      1. `GET /api/tools` で既存ツール一覧を確認
+      2. `POST /api/tools` で新規作成 → IDとURLを取得
+      3. URLにアクセスしてHTMLを確認（通常: `/tool/{id}`、信頼モード: `/tool-trust/{id}`）
+      4. 修正が必要な場合は `PUT /api/tools/{id}` で上書き更新
+
+      **信頼モード（trust）:**
+      - `trust: true` で作成すると `/tool-trust/{id}` のURLが発行され、localStorage等が使用可能
+      - `trust: false` または未指定の場合は `/tool/{id}` のURLが発行され、セキュリティ制限が厳格
   - name: Documentation
     description: APIドキュメント

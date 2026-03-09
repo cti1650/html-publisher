@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createGist } from "@/lib/gist";
+import { createGist, listRecentGists } from "@/lib/gist";
 import { verifyApiKey, unauthorizedResponse } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = request.nextUrl;
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 10, 1), 10) : 10;
+
+    const baseUrl = request.nextUrl.origin;
+    const tools = await listRecentGists(limit, baseUrl);
+
+    return NextResponse.json(tools, { status: 200 });
+  } catch (error) {
+    console.error("Error listing tools:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   if (!verifyApiKey(request)) {

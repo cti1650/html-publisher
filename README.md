@@ -53,6 +53,26 @@ API_KEYは`SECRET`と`GITHUB_TOKEN`のハッシュから動的に検証されま
 
 ※ `SECRET`が未設定の場合、認証はスキップされます（ローカル開発用）。
 
+### ツール一覧取得
+
+```
+GET /api/tools?limit=10
+
+Response (200):
+[
+  {
+    "id": "abc123...",
+    "name": "コンパスアプリ",
+    "memo": "方位を表示",
+    "trust": true,
+    "url": "https://html-publisher-zeta.vercel.app/tool-trust/abc123...",
+    "updatedAt": "2024-01-15T12:00:00Z"
+  }
+]
+```
+
+`limit`パラメータで取得件数を指定（1-10、デフォルト10）。HTMLソースは含まれません。
+
 ### HTML登録
 
 ```
