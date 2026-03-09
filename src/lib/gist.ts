@@ -6,33 +6,60 @@ interface GistResponse {
   files: Record<string, { filename: string; raw_url: string; content: string }>;
 }
 
-function insertMemoMeta(html: string, memo: string): string {
-  const metaTag = `<meta name="tool-memo" content="${memo.replace(/"/g, "&quot;")}">`;
+interface GistOptions {
+  name?: string;
+  memo?: string;
+}
+
+function insertMetaTags(html: string, options: GistOptions): string {
+  const tags: string[] = [];
+
+  if (options.name) {
+    tags.push(`<meta name="tool-name" content="${options.name.replace(/"/g, "&quot;")}">`);
+  }
+  if (options.memo) {
+    tags.push(`<meta name="tool-memo" content="${options.memo.replace(/"/g, "&quot;")}">`);
+  }
+
+  if (tags.length === 0) {
+    return html;
+  }
+
+  const metaTags = tags.join("\n  ");
 
   // <head>タグがある場合はその直後に挿入
   if (html.includes("<head>")) {
-    return html.replace("<head>", `<head>\n  ${metaTag}`);
+    return html.replace("<head>", `<head>\n  ${metaTags}`);
   }
 
   // <html>タグがある場合は<head>を作成して挿入
   if (html.includes("<html>")) {
-    return html.replace("<html>", `<html>\n<head>\n  ${metaTag}\n</head>`);
+    return html.replace("<html>", `<html>\n<head>\n  ${metaTags}\n</head>`);
   }
 
   // どちらもない場合は先頭に挿入
-  return `${metaTag}\n${html}`;
+  return `${metaTags}\n${html}`;
 }
 
-function buildDescription(memo?: string): string {
-  if (memo) {
-    return `HTML Tool - ${memo}`;
+function buildDescription(options: GistOptions): string {
+  const parts: string[] = [];
+
+  if (options.name) {
+    parts.push(options.name);
+  } else {
+    parts.push("HTML Tool");
   }
-  return "HTML Tool";
+
+  if (options.memo) {
+    parts.push(options.memo);
+  }
+
+  return parts.join(" - ");
 }
 
 export async function createGist(
   html: string,
-  memo?: string
+  options?: GistOptions
 ): Promise<{
   id: string;
   rawUrl: string;
@@ -42,8 +69,9 @@ export async function createGist(
     throw new Error("GITHUB_TOKEN is not set");
   }
 
-  const content = memo ? insertMemoMeta(html, memo) : html;
-  const description = buildDescription(memo);
+  const opts = options || {};
+  const content = insertMetaTags(html, opts);
+  const description = buildDescription(opts);
 
   const response = await fetch(`${GITHUB_API}/gists`, {
     method: "POST",
@@ -119,7 +147,7 @@ export async function getGist(id: string): Promise<{
 export async function updateGist(
   id: string,
   html: string,
-  memo?: string
+  options?: GistOptions
 ): Promise<{
   id: string;
   rawUrl: string;
@@ -129,8 +157,9 @@ export async function updateGist(
     throw new Error("GITHUB_TOKEN is not set");
   }
 
-  const content = memo ? insertMemoMeta(html, memo) : html;
-  const description = buildDescription(memo);
+  const opts = options || {};
+  const content = insertMetaTags(html, opts);
+  const description = buildDescription(opts);
 
   const response = await fetch(`${GITHUB_API}/gists/${id}`, {
     method: "PATCH",

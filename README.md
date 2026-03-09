@@ -59,6 +59,7 @@ Content-Type: application/json
 Request:
 {
   "html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>",
+  "name": "コンパスアプリ",  // 任意: ツール名
   "memo": "初回作成"  // 任意: 変更メモ
 }
 
@@ -70,10 +71,11 @@ Response (201):
 }
 ```
 
-`memo`を指定すると:
-- Gistの説明に反映: `HTML Tool - 初回作成`
+`name`と`memo`を指定すると:
+- Gistの説明に反映: `コンパスアプリ - 初回作成`
+- HTML内に`<meta name="tool-name" content="コンパスアプリ">`を挿入
 - HTML内に`<meta name="tool-memo" content="初回作成">`を挿入
-- Slack通知にメモを表示
+- Slack通知にツール名とメモを表示
 
 ### ツール取得
 
@@ -97,6 +99,7 @@ Content-Type: application/json
 Request:
 {
   "html": "<!DOCTYPE html><html><body><h1>Updated</h1></body></html>",
+  "name": "コンパスアプリ",  // 任意: ツール名
   "memo": "ボタンの色を変更"  // 任意: 変更メモ
 }
 

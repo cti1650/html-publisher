@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { html, memo } = body;
+    const { html, name, memo } = body;
 
     if (!html || typeof html !== "string") {
       return NextResponse.json(
@@ -19,12 +19,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { id, rawUrl } = await createGist(html, memo);
+    const { id, rawUrl } = await createGist(html, { name, memo });
 
     const baseUrl = request.nextUrl.origin;
     const url = `${baseUrl}/tool/${id}`;
 
-    notifySlack({ type: "create", id, url, memo });
+    notifySlack({ type: "create", id, url, name, memo });
 
     return NextResponse.json({ id, url, rawUrl }, { status: 201 });
   } catch (error) {
