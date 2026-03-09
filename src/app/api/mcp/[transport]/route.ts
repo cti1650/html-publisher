@@ -19,14 +19,17 @@ function getBaseUrl(): string {
 const handler = createMcpHandler(
   (server) => {
     // ツール作成
-    server.tool(
+    server.registerTool(
       "create_tool",
-      "HTMLコンテンツを新規作成し、公開URLを取得します",
       {
-        html: z.string().min(1).describe("公開するHTMLコンテンツ"),
-        name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
-        memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
-        trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
+        title: "Create Tool",
+        description: "HTMLコンテンツを新規作成し、公開URLを取得します",
+        inputSchema: {
+          html: z.string().min(1).describe("公開するHTMLコンテンツ"),
+          name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
+          memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
+          trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
+        },
       },
       async ({ html, name, memo, trust }) => {
         const result = await createGist(html, { name, memo, trust });
@@ -47,16 +50,19 @@ const handler = createMcpHandler(
     );
 
     // ツール取得
-    server.tool(
+    server.registerTool(
       "get_tool",
-      "指定されたIDのツールのHTMLソースを取得します。/tool/{id}または/tool-trust/{id}のURLからIDを抽出して使用してください",
       {
-        id: z
-          .string()
-          .min(1)
-          .describe(
-            "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
-          ),
+        title: "Get Tool",
+        description: "指定されたIDのツールのHTMLソースを取得します。/tool/{id}または/tool-trust/{id}のURLからIDを抽出して使用してください",
+        inputSchema: {
+          id: z
+            .string()
+            .min(1)
+            .describe(
+              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+            ),
+        },
       },
       async ({ id }) => {
         const result = await getGist(id);
@@ -75,20 +81,23 @@ const handler = createMcpHandler(
     );
 
     // ツール更新
-    server.tool(
+    server.registerTool(
       "update_tool",
-      "指定されたIDのツールのHTMLコンテンツを上書き更新します。trustフラグが変わるとURLのパスも変わります",
       {
-        id: z
-          .string()
-          .min(1)
-          .describe(
-            "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
-          ),
-        html: z.string().min(1).describe("更新後のHTMLコンテンツ"),
-        name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
-        memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
-        trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
+        title: "Update Tool",
+        description: "指定されたIDのツールのHTMLコンテンツを上書き更新します。trustフラグが変わるとURLのパスも変わります",
+        inputSchema: {
+          id: z
+            .string()
+            .min(1)
+            .describe(
+              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+            ),
+          html: z.string().min(1).describe("更新後のHTMLコンテンツ"),
+          name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
+          memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
+          trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
+        },
       },
       async ({ id, html, name, memo, trust }) => {
         const result = await updateGist(id, html, { name, memo, trust });
