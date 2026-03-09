@@ -171,7 +171,7 @@ export default function Home() {
             </pre>
           </div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-4">
-            提供ツール: create_tool, get_tool, update_tool, list_recent_tools, get_gist_url
+            提供ツール: create_tool, get_tool, update_tool, add_metadata, list_recent_tools, get_gist_url
           </p>
         </section>
       </main>

@@ -279,6 +279,30 @@ export async function updateGist(
   };
 }
 
+export async function addMetadata(
+  id: string,
+  options: GistOptions
+): Promise<{
+  id: string;
+  rawUrl: string;
+  name?: string;
+  memo?: string;
+  trust?: boolean;
+}> {
+  // 既存のGistを取得
+  const existing = await getGist(id);
+
+  // 既存のメタ情報とマージ（新しい値が優先）
+  const mergedOpts: GistOptions = {
+    name: options.name ?? existing.name,
+    memo: options.memo ?? existing.memo,
+    trust: options.trust ?? existing.trust,
+  };
+
+  // HTMLを更新（メタタグのみ変更、コンテンツはそのまま）
+  return updateGist(id, existing.html, mergedOpts);
+}
+
 export interface ToolSummary {
   id: string;
   name?: string;

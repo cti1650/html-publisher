@@ -1,6 +1,6 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
-import { createGist, getGist, updateGist, listRecentGists } from "@/lib/gist";
+import { createGist, getGist, updateGist, addMetadata, listRecentGists } from "@/lib/gist";
 import { verifyApiKey } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
 
@@ -112,6 +112,42 @@ const handler = createMcpHandler(
             {
               type: "text",
               text: JSON.stringify({ id, url, rawUrl: result.rawUrl, trust: result.trust }, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    // メタデータ追加（既存Gistの取り込み用）
+    server.registerTool(
+      "add_metadata",
+      {
+        title: "Add Metadata",
+        description: "既存のGistにメタデータ（name, memo, trust）を追加します。手動で作成したGistをHTML Publisherの管理対象に取り込む際に使用してください。HTMLコンテンツは変更されません",
+        inputSchema: {
+          id: z
+            .string()
+            .min(1)
+            .describe(
+              "GistのID。GitHubのGist URLの末尾部分です（例: https://gist.github.com/user/abc123 → abc123）"
+            ),
+          name: z.string().optional().describe("ツール名（任意）"),
+          memo: z.string().optional().describe("メモ（任意）"),
+          trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
+        },
+      },
+      async ({ id, name, memo, trust }) => {
+        const result = await addMetadata(id, { name, memo, trust });
+        const toolPath = result.trust ? "tool-trust" : "tool";
+        const url = `${getBaseUrl()}/${toolPath}/${id}`;
+
+        await notifySlack({ type: "update", id, url, name: result.name, memo: result.memo, trust: result.trust });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ id, url, rawUrl: result.rawUrl, name: result.name, memo: result.memo, trust: result.trust }, null, 2),
             },
           ],
         };
