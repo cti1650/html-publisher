@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { html, name, memo } = body;
+    const { html, name, memo, trust } = body;
 
     if (!html || typeof html !== "string") {
       return NextResponse.json(
@@ -19,14 +19,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { id, rawUrl } = await createGist(html, { name, memo });
+    const result = await createGist(html, { name, memo, trust });
 
     const baseUrl = request.nextUrl.origin;
-    const url = `${baseUrl}/tool/${id}`;
+    const toolPath = result.trust ? "tool-trust" : "tool";
+    const url = `${baseUrl}/${toolPath}/${result.id}`;
 
-    notifySlack({ type: "create", id, url, name, memo });
+    notifySlack({ type: "create", id: result.id, url, name: result.name, memo: result.memo, trust: result.trust });
 
-    return NextResponse.json({ id, url, rawUrl }, { status: 201 });
+    return NextResponse.json({ id: result.id, url, rawUrl: result.rawUrl, trust: result.trust }, { status: 201 });
   } catch (error) {
     console.error("Error creating tool:", error);
     return NextResponse.json(

@@ -26,18 +26,20 @@ const handler = createMcpHandler(
         html: z.string().min(1).describe("公開するHTMLコンテンツ"),
         name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
         memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
+        trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
       },
-      async ({ html, name, memo }) => {
-        const { id, rawUrl } = await createGist(html, { name, memo });
-        const url = `${getBaseUrl()}/tool/${id}`;
+      async ({ html, name, memo, trust }) => {
+        const result = await createGist(html, { name, memo, trust });
+        const toolPath = result.trust ? "tool-trust" : "tool";
+        const url = `${getBaseUrl()}/${toolPath}/${result.id}`;
 
-        notifySlack({ type: "create", id, url, name, memo });
+        notifySlack({ type: "create", id: result.id, url, name: result.name, memo: result.memo, trust: result.trust });
 
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify({ id, url, rawUrl }, null, 2),
+              text: JSON.stringify({ id: result.id, url, rawUrl: result.rawUrl, trust: result.trust }, null, 2),
             },
           ],
         };
@@ -47,23 +49,25 @@ const handler = createMcpHandler(
     // ツール取得
     server.tool(
       "get_tool",
-      "指定されたIDのツールのHTMLソースを取得します。/tool/{id}のURLからIDを抽出して使用してください",
+      "指定されたIDのツールのHTMLソースを取得します。/tool/{id}または/tool-trust/{id}のURLからIDを抽出して使用してください",
       {
         id: z
           .string()
           .min(1)
           .describe(
-            "ツールのID。URLの/tool/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+            "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
           ),
       },
       async ({ id }) => {
-        const { html, rawUrl } = await getGist(id);
+        const result = await getGist(id);
+        const toolPath = result.trust ? "tool-trust" : "tool";
+        const url = `${getBaseUrl()}/${toolPath}/${id}`;
 
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify({ id, html, rawUrl }, null, 2),
+              text: JSON.stringify({ id, html: result.html, rawUrl: result.rawUrl, url, trust: result.trust }, null, 2),
             },
           ],
         };
@@ -73,30 +77,32 @@ const handler = createMcpHandler(
     // ツール更新
     server.tool(
       "update_tool",
-      "指定されたIDのツールのHTMLコンテンツを上書き更新します。更新後もURLは変わりません",
+      "指定されたIDのツールのHTMLコンテンツを上書き更新します。trustフラグが変わるとURLのパスも変わります",
       {
         id: z
           .string()
           .min(1)
           .describe(
-            "ツールのID。URLの/tool/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+            "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
           ),
         html: z.string().min(1).describe("更新後のHTMLコンテンツ"),
         name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
         memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
+        trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
       },
-      async ({ id, html, name, memo }) => {
-        const result = await updateGist(id, html, { name, memo });
-        const url = `${getBaseUrl()}/tool/${id}`;
+      async ({ id, html, name, memo, trust }) => {
+        const result = await updateGist(id, html, { name, memo, trust });
+        const toolPath = result.trust ? "tool-trust" : "tool";
+        const url = `${getBaseUrl()}/${toolPath}/${id}`;
 
-        // updateGistから返されたname/memoを使用（既存の値がマージされている）
-        notifySlack({ type: "update", id, url, name: result.name, memo: result.memo });
+        // updateGistから返されたname/memo/trustを使用（既存の値がマージされている）
+        notifySlack({ type: "update", id, url, name: result.name, memo: result.memo, trust: result.trust });
 
         return {
           content: [
             {
               type: "text",
-              text: JSON.stringify({ id, url, rawUrl: result.rawUrl }, null, 2),
+              text: JSON.stringify({ id, url, rawUrl: result.rawUrl, trust: result.trust }, null, 2),
             },
           ],
         };

@@ -11,22 +11,26 @@ interface GistResponse {
 interface GistOptions {
   name?: string;
   memo?: string;
+  trust?: boolean;
 }
 
-function extractMetaFromHtml(html: string): { name?: string; memo?: string } {
+function extractMetaFromHtml(html: string): { name?: string; memo?: string; trust?: boolean } {
   const nameMatch = html.match(/<meta\s+name="tool-name"\s+content="([^"]*)"/);
   const memoMatch = html.match(/<meta\s+name="tool-memo"\s+content="([^"]*)"/);
+  const trustMatch = html.match(/<meta\s+name="tool-trust"\s+content="([^"]*)"/);
 
   return {
     name: nameMatch ? nameMatch[1].replace(/&quot;/g, '"') : undefined,
     memo: memoMatch ? memoMatch[1].replace(/&quot;/g, '"') : undefined,
+    trust: trustMatch ? trustMatch[1] === "true" : undefined,
   };
 }
 
 function removeMetaTags(html: string): string {
   return html
     .replace(/<meta\s+name="tool-name"\s+content="[^"]*">\n?\s*/g, "")
-    .replace(/<meta\s+name="tool-memo"\s+content="[^"]*">\n?\s*/g, "");
+    .replace(/<meta\s+name="tool-memo"\s+content="[^"]*">\n?\s*/g, "")
+    .replace(/<meta\s+name="tool-trust"\s+content="[^"]*">\n?\s*/g, "");
 }
 
 function insertMetaTags(html: string, options: GistOptions): string {
@@ -37,6 +41,9 @@ function insertMetaTags(html: string, options: GistOptions): string {
   }
   if (options.memo) {
     tags.push(`<meta name="tool-memo" content="${options.memo.replace(/"/g, "&quot;")}">`);
+  }
+  if (options.trust !== undefined) {
+    tags.push(`<meta name="tool-trust" content="${options.trust}">`);
   }
 
   if (tags.length === 0) {
@@ -95,6 +102,9 @@ export async function createGist(
 ): Promise<{
   id: string;
   rawUrl: string;
+  name?: string;
+  memo?: string;
+  trust?: boolean;
 }> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
@@ -102,7 +112,8 @@ export async function createGist(
   }
 
   const opts = options || {};
-  const withMeta = insertMetaTags(html, opts);
+  const cleanHtml = removeMetaTags(html);
+  const withMeta = insertMetaTags(cleanHtml, opts);
   const content = await formatHtml(withMeta);
   const description = buildDescription(opts);
 
@@ -135,6 +146,9 @@ export async function createGist(
   return {
     id: data.id,
     rawUrl,
+    name: opts.name,
+    memo: opts.memo,
+    trust: opts.trust,
   };
 }
 
@@ -142,6 +156,9 @@ export async function getGist(id: string): Promise<{
   id: string;
   html: string;
   rawUrl: string;
+  name?: string;
+  memo?: string;
+  trust?: boolean;
 }> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
@@ -170,10 +187,16 @@ export async function getGist(id: string): Promise<{
     throw new Error("index.html not found in gist");
   }
 
+  // HTMLからメタ情報を抽出
+  const meta = extractMetaFromHtml(file.content);
+
   return {
     id: data.id,
     html: file.content,
     rawUrl: file.raw_url,
+    name: meta.name,
+    memo: meta.memo,
+    trust: meta.trust,
   };
 }
 
@@ -186,6 +209,7 @@ export async function updateGist(
   rawUrl: string;
   name?: string;
   memo?: string;
+  trust?: boolean;
 }> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
@@ -201,6 +225,7 @@ export async function updateGist(
   const opts: GistOptions = {
     name: options?.name ?? existingMeta.name,
     memo: options?.memo ?? existingMeta.memo,
+    trust: options?.trust ?? existingMeta.trust,
   };
 
   const withMeta = insertMetaTags(cleanHtml, opts);
@@ -240,5 +265,6 @@ export async function updateGist(
     rawUrl,
     name: opts.name,
     memo: opts.memo,
+    trust: opts.trust,
   };
 }

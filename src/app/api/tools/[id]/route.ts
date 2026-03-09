@@ -14,9 +14,13 @@ export async function GET(
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
-    const { html, rawUrl } = await getGist(id);
+    const result = await getGist(id);
 
-    return NextResponse.json({ id, html, rawUrl }, { status: 200 });
+    const baseUrl = request.nextUrl.origin;
+    const toolPath = result.trust ? "tool-trust" : "tool";
+    const url = `${baseUrl}/${toolPath}/${id}`;
+
+    return NextResponse.json({ id, html: result.html, rawUrl: result.rawUrl, url, trust: result.trust }, { status: 200 });
   } catch (error) {
     console.error("Error getting tool:", error);
 
@@ -47,7 +51,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { html, name, memo } = body;
+    const { html, name, memo, trust } = body;
 
     if (!html || typeof html !== "string") {
       return NextResponse.json(
@@ -56,15 +60,16 @@ export async function PUT(
       );
     }
 
-    const result = await updateGist(id, html, { name, memo });
+    const result = await updateGist(id, html, { name, memo, trust });
 
     const baseUrl = request.nextUrl.origin;
-    const url = `${baseUrl}/tool/${id}`;
+    const toolPath = result.trust ? "tool-trust" : "tool";
+    const url = `${baseUrl}/${toolPath}/${id}`;
 
-    // updateGistから返されたname/memoを使用（既存の値がマージされている）
-    notifySlack({ type: "update", id, url, name: result.name, memo: result.memo });
+    // updateGistから返されたname/memo/trustを使用（既存の値がマージされている）
+    notifySlack({ type: "update", id, url, name: result.name, memo: result.memo, trust: result.trust });
 
-    return NextResponse.json({ id, url, rawUrl: result.rawUrl }, { status: 200 });
+    return NextResponse.json({ id, url, rawUrl: result.rawUrl, trust: result.trust }, { status: 200 });
   } catch (error) {
     console.error("Error updating tool:", error);
 

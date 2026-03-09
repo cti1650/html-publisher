@@ -63,22 +63,26 @@ Request:
 {
   "html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>",
   "name": "コンパスアプリ",  // 任意: ツール名
-  "memo": "初回作成"  // 任意: 変更メモ
+  "memo": "初回作成",  // 任意: 変更メモ
+  "trust": false  // 任意: 信頼モード（trueでlocalStorage等を許可）
 }
 
 Response (201):
 {
   "id": "abc123...",
   "url": "https://html-publisher-zeta.vercel.app/tool/abc123...",
-  "rawUrl": "https://gist.githubusercontent.com/..."
+  "rawUrl": "https://gist.githubusercontent.com/...",
+  "trust": false
 }
 ```
 
-`name`と`memo`を指定すると:
+`name`、`memo`、`trust`を指定すると:
 - Gistの説明に反映: `コンパスアプリ - 初回作成`
 - HTML内に`<meta name="tool-name" content="コンパスアプリ">`を挿入
 - HTML内に`<meta name="tool-memo" content="初回作成">`を挿入
-- Slack通知にツール名とメモを表示
+- HTML内に`<meta name="tool-trust" content="true">`を挿入（trueの場合）
+- Slack通知にツール名、メモ、信頼モードを表示
+- `trust: true`の場合、URLが`/tool-trust/{id}`になり、localStorage等が使用可能
 
 ### ツール取得
 
@@ -89,7 +93,9 @@ Response (200):
 {
   "id": "abc123...",
   "html": "<!DOCTYPE html>...",
-  "rawUrl": "https://gist.githubusercontent.com/..."
+  "rawUrl": "https://gist.githubusercontent.com/...",
+  "url": "https://html-publisher-zeta.vercel.app/tool/abc123...",
+  "trust": false
 }
 ```
 
@@ -103,14 +109,16 @@ Request:
 {
   "html": "<!DOCTYPE html><html><body><h1>Updated</h1></body></html>",
   "name": "コンパスアプリ",  // 任意: ツール名
-  "memo": "ボタンの色を変更"  // 任意: 変更メモ
+  "memo": "ボタンの色を変更",  // 任意: 変更メモ
+  "trust": true  // 任意: 信頼モード
 }
 
 Response (200):
 {
   "id": "abc123...",
-  "url": "https://html-publisher-zeta.vercel.app/tool/abc123...",
-  "rawUrl": "https://gist.githubusercontent.com/..."
+  "url": "https://html-publisher-zeta.vercel.app/tool-trust/abc123...",
+  "rawUrl": "https://gist.githubusercontent.com/...",
+  "trust": true
 }
 ```
 
@@ -205,11 +213,12 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 
 ## Viewer
 
-`/tool/:id` にアクセスすると、HTMLがiframe sandbox内で表示されます。
+### 通常モード: `/tool/:id`
 
-### セキュリティ
+HTMLがiframe sandbox内で表示されます。
 
-- `sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"` で実行
+**セキュリティ設定:**
+- `sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"`
 - 以下のPermissions Policyを許可:
   - `geolocation` - 位置情報
   - `accelerometer`, `gyroscope`, `magnetometer` - センサー
@@ -217,7 +226,20 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
   - `fullscreen` - フルスクリーン
   - `clipboard-read`, `clipboard-write` - クリップボード
   - `web-share` - Web Share API
-- top navigation、cookie access、parent access は禁止
+- top navigation、cookie access は禁止
+
+### 信頼モード: `/tool-trust/:id`
+
+`trust: true`で作成されたツール専用のエンドポイントです。
+
+**追加で許可される機能:**
+- `localStorage` / `sessionStorage` - データ永続化
+- `allow-downloads` - ファイルダウンロード
+- `allow-pointer-lock` - ポインターロック
+- `storage-access` - ストレージアクセス
+
+**注意:** 信頼モードはセキュリティ制限が緩和されるため、信頼できるHTMLコンテンツにのみ使用してください。
+`trust`フラグが設定されていないツールは`/tool-trust/`でアクセスしても404になります。
 
 ## デプロイ (Vercel)
 

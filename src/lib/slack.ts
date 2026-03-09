@@ -6,9 +6,10 @@ interface NotifyOptions {
   url: string;
   name?: string;
   memo?: string;
+  trust?: boolean;
 }
 
-export async function notifySlack({ type, id, url, name, memo }: NotifyOptions): Promise<void> {
+export async function notifySlack({ type, id, url, name, memo, trust }: NotifyOptions): Promise<void> {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
   if (!webhookUrl) {
@@ -19,6 +20,7 @@ export async function notifySlack({ type, id, url, name, memo }: NotifyOptions):
   const action = type === "create" ? "新規ツール作成" : "ツール更新";
   const toolName = name ? `\nツール名: ${name}` : "";
   const memoLine = memo ? `\nメモ: ${memo}` : "";
+  const trustLine = trust ? "\n:warning: 信頼モード有効" : "";
 
   const payload = {
     blocks: [
@@ -26,7 +28,7 @@ export async function notifySlack({ type, id, url, name, memo }: NotifyOptions):
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `${emoji} *${action}*\nID: \`${id}\`${toolName}${memoLine}\n<${url}|ツールを開く>`,
+          text: `${emoji} *${action}*\nID: \`${id}\`${toolName}${memoLine}${trustLine}\n<${url}|ツールを開く>`,
         },
       },
     ],
