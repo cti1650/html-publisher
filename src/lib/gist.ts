@@ -164,6 +164,7 @@ export async function getGist(id: string): Promise<{
   id: string;
   html: string;
   rawUrl: string;
+  htmlUrl: string;
   name?: string;
   memo?: string;
   trust?: boolean;
@@ -202,6 +203,7 @@ export async function getGist(id: string): Promise<{
     id: data.id,
     html: file.content,
     rawUrl: file.raw_url,
+    htmlUrl: data.html_url,
     name: meta.name,
     memo: meta.memo,
     trust: meta.trust,

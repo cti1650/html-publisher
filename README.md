@@ -204,6 +204,7 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `get_tool` | IDからHTMLソースを取得 |
 | `update_tool` | 既存ツールのHTMLを上書き更新 |
 | `list_recent_tools` | 直近のツール一覧を取得（最大10件、HTMLなし） |
+| `get_gist_url` | Gistの編集ページURLを取得 |
 
 ### クライアント設定例
 

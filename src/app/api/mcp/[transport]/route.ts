@@ -118,6 +118,35 @@ const handler = createMcpHandler(
       }
     );
 
+    // Gist編集URL取得
+    server.registerTool(
+      "get_gist_url",
+      {
+        title: "Get Gist URL",
+        description: "指定されたIDのツールのGitHub Gist編集ページURLを取得します。Gistを直接編集したい場合に使用してください",
+        inputSchema: {
+          id: z
+            .string()
+            .min(1)
+            .describe(
+              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+            ),
+        },
+      },
+      async ({ id }) => {
+        const result = await getGist(id);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ id, gistUrl: result.htmlUrl }, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
     // ツール一覧取得
     server.registerTool(
       "list_recent_tools",
