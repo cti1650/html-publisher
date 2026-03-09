@@ -18,7 +18,7 @@ export default async function ToolViewerPage({ params }: PageProps) {
   }
 
   return (
-    <main className="w-full h-screen">
+    <main className="w-full h-dvh">
       <iframe
         srcDoc={html}
         sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"
