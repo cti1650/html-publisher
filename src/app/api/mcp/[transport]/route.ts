@@ -118,12 +118,12 @@ const handler = createMcpHandler(
       }
     );
 
-    // メタデータ追加（既存Gistの取り込み用）
+    // 既存Gistの取り込み
     server.registerTool(
-      "add_metadata",
+      "import_gist",
       {
-        title: "Add Metadata",
-        description: "既存のGistにメタデータ（name, memo, trust）を追加します。手動で作成したGistをHTML Publisherの管理対象に取り込む際に使用してください。HTMLコンテンツは変更されません",
+        title: "Import Gist",
+        description: "【HTMLを変更せずにメタデータのみ追加】手動で作成したGistをHTML Publisherの管理対象に取り込みます。IDを指定してname/memo/trustを設定します。HTMLの中身は一切変更しません。update_toolとは異なりhtmlパラメータは不要です",
         inputSchema: {
           id: z
             .string()
