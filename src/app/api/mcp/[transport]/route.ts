@@ -85,7 +85,7 @@ const handler = createMcpHandler(
       "update_tool",
       {
         title: "Update Tool",
-        description: "指定されたIDのツールのHTMLコンテンツを上書き更新します。trustフラグが変わるとURLのパスも変わります",
+        description: "【htmlパラメータ必須】HTMLコンテンツを上書き更新します。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください",
         inputSchema: {
           id: z
             .string()
