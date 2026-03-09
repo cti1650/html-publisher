@@ -6,6 +6,14 @@ interface GistResponse {
   id: string;
   html_url: string;
   files: Record<string, { filename: string; raw_url: string; content: string }>;
+  updated_at: string;
+}
+
+interface GistListItem {
+  id: string;
+  description: string;
+  updated_at: string;
+  files: Record<string, { filename: string; raw_url: string }>;
 }
 
 interface GistOptions {
@@ -267,4 +275,64 @@ export async function updateGist(
     memo: opts.memo,
     trust: opts.trust,
   };
+}
+
+export interface ToolSummary {
+  id: string;
+  name?: string;
+  memo?: string;
+  trust?: boolean;
+  url: string;
+  updatedAt: string;
+}
+
+export async function listRecentGists(
+  limit: number = 10,
+  baseUrl: string = "http://localhost:3000"
+): Promise<ToolSummary[]> {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    throw new Error("GITHUB_TOKEN is not set");
+  }
+
+  // 多めに取得してフィルタ（index.htmlを含むGistのみ対象）
+  const response = await fetch(`${GITHUB_API}/gists?per_page=30`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to list gists: ${error}`);
+  }
+
+  const gists: GistListItem[] = await response.json();
+
+  // index.htmlを含むGistのみフィルタ
+  const toolGists = gists.filter((g) => g.files["index.html"]);
+
+  // 各GistのHTMLからメタ情報を取得（limit件まで）
+  const results: ToolSummary[] = [];
+
+  for (const gist of toolGists.slice(0, limit)) {
+    try {
+      const detail = await getGist(gist.id);
+      const toolPath = detail.trust ? "tool-trust" : "tool";
+
+      results.push({
+        id: gist.id,
+        name: detail.name,
+        memo: detail.memo,
+        trust: detail.trust,
+        url: `${baseUrl}/${toolPath}/${gist.id}`,
+        updatedAt: gist.updated_at,
+      });
+    } catch {
+      // 取得に失敗したGistはスキップ
+    }
+  }
+
+  return results;
 }

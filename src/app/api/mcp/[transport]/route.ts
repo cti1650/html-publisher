@@ -1,6 +1,6 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
-import { createGist, getGist, updateGist } from "@/lib/gist";
+import { createGist, getGist, updateGist, listRecentGists } from "@/lib/gist";
 import { verifyApiKey } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
 
@@ -112,6 +112,30 @@ const handler = createMcpHandler(
             {
               type: "text",
               text: JSON.stringify({ id, url, rawUrl: result.rawUrl, trust: result.trust }, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    // ツール一覧取得
+    server.registerTool(
+      "list_recent_tools",
+      {
+        title: "List Recent Tools",
+        description: "直近で作成・更新されたツールの一覧を取得します（最大10件）。HTMLソースは含まれません",
+        inputSchema: {
+          limit: z.number().min(1).max(10).optional().describe("取得件数（1-10、デフォルト10）"),
+        },
+      },
+      async ({ limit }) => {
+        const tools = await listRecentGists(limit ?? 10, getBaseUrl());
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(tools, null, 2),
             },
           ],
         };
