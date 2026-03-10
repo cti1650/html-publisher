@@ -206,6 +206,7 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `import_gist` | 既存Gistにメタデータのみ追加（HTMLは変更しない） |
 | `list_recent_tools` | 直近のツール一覧を取得（最大10件、HTMLなし） |
 | `get_gist_url` | Gistの編集ページURLを取得 |
+| `get_qr_code` | ツール共有用QRコードのURLを取得 |
 
 ### クライアント設定例
 

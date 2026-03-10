@@ -206,6 +206,40 @@ const handler = createMcpHandler(
         };
       }
     );
+
+    // QRコードURL取得
+    server.registerTool(
+      "get_qr_code",
+      {
+        title: "Get QR Code",
+        description: "指定されたIDのツールのQRコード画像URLを取得します。スマートフォンで読み取ってツールを共有できます",
+        inputSchema: {
+          id: z
+            .string()
+            .min(1)
+            .describe(
+              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+            ),
+          size: z.number().min(100).max(500).optional().describe("QRコードのサイズ（ピクセル、100-500、デフォルト300）"),
+        },
+      },
+      async ({ id, size }) => {
+        const result = await getGist(id);
+        const toolPath = result.trust ? "tool-trust" : "tool";
+        const toolUrl = `${getBaseUrl()}/${toolPath}/${id}`;
+        const qrSize = size ?? 300;
+        const qrUrl = `${getBaseUrl()}/api/qr/${id}?size=${qrSize}`;
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ id, toolUrl, qrUrl, size: qrSize }, null, 2),
+            },
+          ],
+        };
+      }
+    );
   },
   {
     serverInfo: {
