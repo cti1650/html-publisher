@@ -2,6 +2,8 @@
 
 ChatGPTなどで生成した単一HTMLファイルをAPI経由で公開し、URLを取得できるツール。
 
+![screenshot](https://gyazo.com/5281ed21d0e631ee4e0c76aa910c8f3c.png)
+
 **セルフホスト型MCP Server** - 自分のGitHubアカウントとVercel（または他のホスティング）にデプロイして使用します。公開サービスではないため、各自でのセットアップが必要です。
 
 ## 機能
