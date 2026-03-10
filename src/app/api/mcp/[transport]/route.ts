@@ -212,7 +212,7 @@ const handler = createMcpHandler(
       "get_qr_code",
       {
         title: "Get QR Code",
-        description: "指定されたIDのツールのQRコード画像URLを取得します。スマートフォンで読み取ってツールを共有できます",
+        description: "【QRコードで共有したい場合はこのツールを使用】ツールのQRコード画像URLを取得します。QRコード画像は既に生成済みで、返されるURLをそのまま共有できます。新しくQRコード生成機能を実装する必要はありません",
         inputSchema: {
           id: z
             .string()
