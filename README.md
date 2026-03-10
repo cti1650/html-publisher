@@ -65,7 +65,7 @@ Response (200):
     "name": "コンパスアプリ",
     "memo": "方位を表示",
     "trust": true,
-    "url": "https://html-publisher-zeta.vercel.app/tool-trust/abc123...",
+    "url": "https://example.com/tool-trust/abc123...",
     "updatedAt": "2024-01-15T12:00:00Z"
   }
 ]
@@ -90,7 +90,7 @@ Request:
 Response (201):
 {
   "id": "abc123...",
-  "url": "https://html-publisher-zeta.vercel.app/tool/abc123...",
+  "url": "https://example.com/tool/abc123...",
   "rawUrl": "https://gist.githubusercontent.com/...",
   "trust": false
 }
@@ -114,7 +114,7 @@ Response (200):
   "id": "abc123...",
   "html": "<!DOCTYPE html>...",
   "rawUrl": "https://gist.githubusercontent.com/...",
-  "url": "https://html-publisher-zeta.vercel.app/tool/abc123...",
+  "url": "https://example.com/tool/abc123...",
   "trust": false
 }
 ```
@@ -136,7 +136,7 @@ Request:
 Response (200):
 {
   "id": "abc123...",
-  "url": "https://html-publisher-zeta.vercel.app/tool-trust/abc123...",
+  "url": "https://example.com/tool-trust/abc123...",
   "rawUrl": "https://gist.githubusercontent.com/...",
   "trust": true
 }
@@ -162,7 +162,7 @@ AIエージェント（Claude、Cursor等）から直接利用可能なMCPサー
 ### エンドポイント
 
 ```
-https://html-publisher-zeta.vercel.app/api/mcp/mcp
+https://example.com/api/mcp/mcp
 ```
 
 ローカル開発時は `http://localhost:3000/api/mcp/mcp` を使用してください。
@@ -216,7 +216,7 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 {
   "mcpServers": {
     "html-publisher": {
-      "url": "https://html-publisher-zeta.vercel.app/api/mcp/mcp?key=your-api-key"
+      "url": "https://example.com/api/mcp/mcp?key=your-api-key"
     }
   }
 }
@@ -229,7 +229,7 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
   "mcpServers": {
     "html-publisher": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://html-publisher-zeta.vercel.app/api/mcp/mcp?key=your-api-key"]
+      "args": ["-y", "mcp-remote", "https://example.com/api/mcp/mcp?key=your-api-key"]
     }
   }
 }
@@ -283,7 +283,7 @@ HTMLがiframe sandbox内で表示されます。
    - `GITHUB_TOKEN`: GitHub Personal Access Token
    - `SECRET`: API_KEY生成用シークレット（任意、設定推奨）
    - `SLACK_WEBHOOK_URL`: Slack通知用Webhook URL（任意）
-   - `BASE_URL`: ツールURLのベースドメイン（任意、例: `https://html-publisher-zeta.vercel.app`）
+   - `BASE_URL`: ツールURLのベースドメイン（任意、例: `https://example.com`）
 4. デプロイ
 
 ※ `VERCEL_URL`は自動設定されるため、URLの設定は不要です。

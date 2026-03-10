@@ -60,7 +60,7 @@ const handler = createMcpHandler(
             .string()
             .min(1)
             .describe(
-              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://example.com/tool/abc123 → abc123）"
             ),
         },
       },
@@ -91,7 +91,7 @@ const handler = createMcpHandler(
             .string()
             .min(1)
             .describe(
-              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://example.com/tool/abc123 → abc123）"
             ),
           html: z.string().min(1).describe("更新後のHTMLコンテンツ"),
           name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
@@ -165,7 +165,7 @@ const handler = createMcpHandler(
             .string()
             .min(1)
             .describe(
-              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://example.com/tool/abc123 → abc123）"
             ),
         },
       },
@@ -218,7 +218,7 @@ const handler = createMcpHandler(
             .string()
             .min(1)
             .describe(
-              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://html-publisher-zeta.vercel.app/tool/abc123 → abc123）"
+              "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://example.com/tool/abc123 → abc123）"
             ),
           size: z.number().min(100).max(500).optional().describe("QRコードのサイズ（ピクセル、100-500、デフォルト300）"),
         },
