@@ -264,6 +264,16 @@ HTMLがiframe sandbox内で表示されます。
 **注意:** 信頼モードはセキュリティ制限が緩和されるため、信頼できるHTMLコンテンツにのみ使用してください。
 `trust`フラグが設定されていないツールは`/tool-trust/`でアクセスしても404になります。
 
+### PWA対応
+
+各ツールページはPWA（Progressive Web App）に対応しています。
+
+- **ホーム画面に追加**: ツールをスマートフォンのホーム画面に追加してアプリのように使用可能
+- **オフライン対応**: 一度表示したツールはキャッシュされ、オフラインでも閲覧可能
+- **スタンドアロン表示**: ブラウザのUIなしでフルスクリーン表示
+
+ツール名（`name`）とメモ（`memo`）はmanifest.jsonに反映され、ホーム画面のアプリ名や説明として表示されます。
+
 ## デプロイ (Vercel)
 
 1. GitHubにリポジトリを作成してプッシュ
@@ -284,3 +294,4 @@ HTMLがiframe sandbox内で表示されます。
 - Tailwind CSS
 - GitHub Gist API
 - MCP (Model Context Protocol)
+- PWA (Service Worker)

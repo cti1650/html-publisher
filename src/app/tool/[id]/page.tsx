@@ -31,6 +31,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         title,
         description,
       },
+      manifest: `/api/manifest/${id}`,
+      appleWebApp: {
+        capable: true,
+        statusBarStyle: "black-translucent",
+        title,
+      },
+      other: {
+        "mobile-web-app-capable": "yes",
+        "apple-mobile-web-app-capable": "yes",
+      },
     };
   } catch {
     return {
@@ -41,6 +51,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       },
     };
   }
+}
+
+function ServiceWorkerRegistration() {
+  return (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function() {});
+          }
+        `,
+      }}
+    />
+  );
 }
 
 export default async function ToolViewerPage({ params }: PageProps) {
@@ -56,14 +80,17 @@ export default async function ToolViewerPage({ params }: PageProps) {
   }
 
   return (
-    <main className="w-full h-dvh">
-      <iframe
-        srcDoc={html}
-        sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"
-        allow="geolocation; accelerometer; gyroscope; magnetometer; camera; microphone; fullscreen; clipboard-read; clipboard-write; web-share"
-        className="w-full h-full border-0"
-        title="HTML Tool"
-      />
-    </main>
+    <>
+      <ServiceWorkerRegistration />
+      <main className="w-full h-dvh">
+        <iframe
+          srcDoc={html}
+          sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"
+          allow="geolocation; accelerometer; gyroscope; magnetometer; camera; microphone; fullscreen; clipboard-read; clipboard-write; web-share"
+          className="w-full h-full border-0"
+          title="HTML Tool"
+        />
+      </main>
+    </>
   );
 }
