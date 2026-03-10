@@ -202,7 +202,8 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 |---------|------|
 | `create_tool` | HTMLを新規作成し公開URLを取得 |
 | `get_tool` | IDからHTMLソースを取得 |
-| `update_tool` | 既存ツールのHTMLを上書き更新 |
+| `update_tool` | 既存ツールのHTMLを上書き更新（htmlパラメータ必須） |
+| `import_gist` | 既存Gistにメタデータのみ追加（HTMLは変更しない） |
 | `list_recent_tools` | 直近のツール一覧を取得（最大10件、HTMLなし） |
 | `get_gist_url` | Gistの編集ページURLを取得 |
 
