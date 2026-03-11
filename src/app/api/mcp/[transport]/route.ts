@@ -23,7 +23,7 @@ const handler = createMcpHandler(
       "create_tool",
       {
         title: "Create Tool",
-        description: "HTMLコンテンツを新規作成し、公開URLを取得します",
+        description: "【実行前に必ずユーザーに確認を取ること】HTMLコンテンツを新規作成し、公開URLを取得します。実行前に「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」をユーザーに説明し、作成してよいか確認を取ってください",
         inputSchema: {
           html: z.string().min(1).describe("公開するHTMLコンテンツ"),
           name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
@@ -96,7 +96,7 @@ const handler = createMcpHandler(
       "update_tool",
       {
         title: "Update Tool",
-        description: "【htmlパラメータ必須】HTMLコンテンツを上書き更新します。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください",
+        description: "【実行前に必ずユーザーに確認を取ること】【htmlパラメータ必須】HTMLコンテンツを上書き更新します。実行前に「どのような変更を行うか」「変更箇所の概要」をユーザーに説明し、更新してよいか確認を取ってください。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください",
         inputSchema: {
           id: z
             .string()
@@ -145,7 +145,7 @@ const handler = createMcpHandler(
       "import_gist",
       {
         title: "Import Gist",
-        description: "【HTMLを変更せずにメタデータのみ追加】手動で作成したGistをHTML Publisherの管理対象に取り込みます。IDを指定してname/memo/trustを設定します。HTMLの中身は一切変更しません。update_toolとは異なりhtmlパラメータは不要です",
+        description: "【実行前に必ずユーザーに確認を取ること】【HTMLを変更せずにメタデータのみ追加】手動で作成したGistをHTML Publisherの管理対象に取り込みます。実行前に「対象のGist ID」「設定するメタデータ」をユーザーに説明し、取り込んでよいか確認を取ってください。HTMLの中身は一切変更しません",
         inputSchema: {
           id: z
             .string()
