@@ -212,6 +212,19 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `get_gist_url` | Gistの編集ページURLを取得 |
 | `get_qr_code` | ツール共有用QRコードのURLを取得 |
 
+### 信頼モード（trust）の安全機構
+
+`trust: true`を指定する場合、`confirm_trust: true`も同時に指定する必要があります。
+
+```json
+{
+  "trust": true,
+  "confirm_trust": true
+}
+```
+
+`confirm_trust`が指定されていない場合、ツールはエラーを返しAIエージェントにユーザー確認を促します。これにより意図しない信頼モードの有効化を防ぎます。
+
 ### クライアント設定例
 
 #### Streamable HTTP対応クライアント（Cursor等）
