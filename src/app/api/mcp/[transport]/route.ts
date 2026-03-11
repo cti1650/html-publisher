@@ -28,10 +28,21 @@ const handler = createMcpHandler(
           html: z.string().min(1).describe("公開するHTMLコンテンツ"),
           name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
           memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
-          trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
+          trust: z.boolean().optional().describe("【危険】信頼モード。trueにするとiframe sandboxが無効化され、HTMLがページ内で直接実行されます。カメラ/マイク等のAPI利用が必要な場合のみ使用してください"),
+          confirm_trust: z.boolean().optional().describe("trust: trueを指定する場合は必ずconfirm_trust: trueも指定してください。ユーザーに確認を取ってから有効化することを推奨します"),
         },
       },
-      async ({ html, name, memo, trust }) => {
+      async ({ html, name, memo, trust, confirm_trust }) => {
+        if (trust && !confirm_trust) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ error: "trust: trueを指定する場合はconfirm_trust: trueも必要です。信頼モードはセキュリティ制限が無効化されます。ユーザーに確認を取ってから再実行してください。" }, null, 2),
+              },
+            ],
+          };
+        }
         const result = await createGist(html, { name, memo, trust });
         const toolPath = result.trust ? "tool-trust" : "tool";
         const url = `${getBaseUrl()}/${toolPath}/${result.id}`;
@@ -96,10 +107,21 @@ const handler = createMcpHandler(
           html: z.string().min(1).describe("更新後のHTMLコンテンツ"),
           name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
           memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
-          trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
+          trust: z.boolean().optional().describe("【危険】信頼モード。trueにするとiframe sandboxが無効化され、HTMLがページ内で直接実行されます。カメラ/マイク等のAPI利用が必要な場合のみ使用してください"),
+          confirm_trust: z.boolean().optional().describe("trust: trueを指定する場合は必ずconfirm_trust: trueも指定してください。ユーザーに確認を取ってから有効化することを推奨します"),
         },
       },
-      async ({ id, html, name, memo, trust }) => {
+      async ({ id, html, name, memo, trust, confirm_trust }) => {
+        if (trust && !confirm_trust) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ error: "trust: trueを指定する場合はconfirm_trust: trueも必要です。信頼モードはセキュリティ制限が無効化されます。ユーザーに確認を取ってから再実行してください。" }, null, 2),
+              },
+            ],
+          };
+        }
         const result = await updateGist(id, html, { name, memo, trust });
         const toolPath = result.trust ? "tool-trust" : "tool";
         const url = `${getBaseUrl()}/${toolPath}/${id}`;
@@ -133,10 +155,21 @@ const handler = createMcpHandler(
             ),
           name: z.string().optional().describe("ツール名（任意）"),
           memo: z.string().optional().describe("メモ（任意）"),
-          trust: z.boolean().optional().describe("信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します"),
+          trust: z.boolean().optional().describe("【危険】信頼モード。trueにするとiframe sandboxが無効化され、HTMLがページ内で直接実行されます。カメラ/マイク等のAPI利用が必要な場合のみ使用してください"),
+          confirm_trust: z.boolean().optional().describe("trust: trueを指定する場合は必ずconfirm_trust: trueも指定してください。ユーザーに確認を取ってから有効化することを推奨します"),
         },
       },
-      async ({ id, name, memo, trust }) => {
+      async ({ id, name, memo, trust, confirm_trust }) => {
+        if (trust && !confirm_trust) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ error: "trust: trueを指定する場合はconfirm_trust: trueも必要です。信頼モードはセキュリティ制限が無効化されます。ユーザーに確認を取ってから再実行してください。" }, null, 2),
+              },
+            ],
+          };
+        }
         const result = await addMetadata(id, { name, memo, trust });
         const toolPath = result.trust ? "tool-trust" : "tool";
         const url = `${getBaseUrl()}/${toolPath}/${id}`;
