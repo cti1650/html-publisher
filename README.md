@@ -260,13 +260,14 @@ HTMLがiframe sandbox内で表示されます。
 
 `trust: true`で作成されたツール専用のエンドポイントです。
 
-**追加で許可される機能:**
-- `localStorage` / `sessionStorage` - データ永続化
-- `allow-downloads` - ファイルダウンロード
-- `allow-pointer-lock` - ポインターロック
-- `storage-access` - ストレージアクセス
+**iframeを使用せず、HTMLを直接レンダリングします。** これにより以下が可能になります：
 
-**注意:** 信頼モードはセキュリティ制限が緩和されるため、信頼できるHTMLコンテンツにのみ使用してください。
+- `localStorage` / `sessionStorage` - データ永続化
+- `camera` / `microphone` - PWAモードでも動作
+- ファイルダウンロード
+- すべてのブラウザAPI
+
+**警告:** 信頼モードはHTMLがページ内で直接実行されるため、**完全に自己責任**です。セルフホスト環境で自分が登録したHTMLのみを信頼モードで使用してください。
 `trust`フラグが設定されていないツールは`/tool-trust/`でアクセスしても404になります。
 
 ### PWA対応

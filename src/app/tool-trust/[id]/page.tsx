@@ -101,15 +101,10 @@ export default async function TrustedToolViewerPage({ params }: PageProps) {
   return (
     <>
       <ServiceWorkerRegistration />
-      <main className="w-full h-dvh">
-        <iframe
-          srcDoc={html}
-          sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups allow-downloads allow-pointer-lock"
-          allow="geolocation; accelerometer; gyroscope; magnetometer; camera; microphone; fullscreen; clipboard-read; clipboard-write; web-share; storage-access"
-          className="w-full h-full border-0"
-          title="Trusted HTML Tool"
-        />
-      </main>
+      <div
+        className="w-full h-dvh"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
     </>
   );
 }
