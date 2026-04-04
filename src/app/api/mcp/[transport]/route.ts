@@ -264,17 +264,17 @@ const handler = createMcpHandler(
         const qrSize = size ?? 300;
         const qrUrl = `${getBaseUrl()}/api/qr/${id}?size=${qrSize}`;
 
-        const qrBuffer = await QRCode.toBuffer(toolUrl, {
+        const qrDataUrl = await QRCode.toDataURL(toolUrl, {
           width: qrSize,
           margin: 2,
           color: { dark: "#000000", light: "#ffffff" },
         });
-        const qrBase64 = Buffer.from(qrBuffer).toString("base64");
+        const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
 
         return {
           content: [
             {
-              type: "image" as const,
+              type: "image",
               data: qrBase64,
               mimeType: "image/png",
             },
