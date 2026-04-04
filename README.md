@@ -225,6 +225,16 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 
 `confirm_trust`が指定されていない場合、ツールはエラーを返しAIエージェントにユーザー確認を促します。これにより意図しない信頼モードの有効化を防ぎます。
 
+### Claude Code スキルプラグイン
+
+Claude Codeを使用する場合、専用のスキルプラグインを導入することでHTMLの作成・管理ワークフローが最適化されます。
+
+```bash
+claude plugins add /path/to/html-publisher-skills
+```
+
+詳細: https://github.com/cti1650/html-publisher-skills
+
 ### クライアント設定例
 
 #### Streamable HTTP対応クライアント（Cursor等）
