@@ -1,5 +1,6 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
+import QRCode from "qrcode";
 import { createGist, getGist, updateGist, addMetadata, listRecentGists } from "@/lib/gist";
 import { verifyApiKey } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
@@ -263,8 +264,20 @@ const handler = createMcpHandler(
         const qrSize = size ?? 300;
         const qrUrl = `${getBaseUrl()}/api/qr/${id}?size=${qrSize}`;
 
+        const qrBuffer = await QRCode.toBuffer(toolUrl, {
+          width: qrSize,
+          margin: 2,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+        const qrBase64 = Buffer.from(qrBuffer).toString("base64");
+
         return {
           content: [
+            {
+              type: "image" as const,
+              data: qrBase64,
+              mimeType: "image/png",
+            },
             {
               type: "text",
               text: JSON.stringify({ id, toolUrl, qrUrl, size: qrSize }, null, 2),
