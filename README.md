@@ -229,8 +229,28 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 
 Claude Codeを使用する場合、専用のスキルプラグインを導入することでHTMLの作成・管理ワークフローが最適化されます。
 
+**インストール:**
 ```bash
-claude plugins add /path/to/html-publisher-skills
+# マーケットプレイスを追加
+/plugin marketplace add cti1650/html-publisher-skills
+
+# プラグインをインストール
+/plugin install html-publisher-skills@html-publisher-marketplace
+```
+
+**アップデート:**
+```bash
+/plugin marketplace update html-publisher-marketplace
+/plugin install html-publisher-skills@html-publisher-marketplace
+```
+
+**アンインストール:**
+```bash
+# プラグインを削除
+/plugin disable html-publisher-skills@html-publisher-marketplace
+
+# マーケットプレイスごと削除する場合
+/plugin marketplace remove html-publisher-marketplace
 ```
 
 詳細: https://github.com/cti1650/html-publisher-skills
