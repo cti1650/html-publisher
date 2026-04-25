@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTool, listRecentTools } from "@/lib/storage";
-import { verifyApiKey, unauthorizedResponse } from "@/lib/auth";
+import { checkAuth, unauthorizedResponse } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
 
 export async function GET(request: NextRequest) {
@@ -23,9 +23,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!verifyApiKey(request)) {
+  const auth = checkAuth(request);
+  if (auth === "rejected") {
     return unauthorizedResponse();
   }
+  const authenticated = auth === "authenticated";
 
   try {
     const body = await request.json();
@@ -38,7 +40,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await createTool(html, { name, memo, trust, ephemeral });
+    // 匿名アクセスは揮発モード固定（永続モード=Gist書き込みは認証必須）
+    const finalEphemeral = !authenticated ? true : ephemeral;
+
+    const result = await createTool(html, { name, memo, trust, ephemeral: finalEphemeral });
 
     const baseUrl = request.nextUrl.origin;
     const toolPath = result.trust ? "tool-trust" : "tool";
