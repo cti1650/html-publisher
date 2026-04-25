@@ -23,6 +23,7 @@ ChatGPTなどで生成した単一HTMLファイルをAPI経由で公開し、URL
 - アクセス毎に TTL がスライド延長されるため、使われ続けている限り消えません
 - `ephemeral: true` を指定するか、`GITHUB_TOKEN` 未設定時に自動で揮発モードになります
 - `get/update` は ID 形式から自動判別（`c_` で始まれば揮発、それ以外は Gist）
+- **揮発モードのエントリは `list` 系 API には含まれません**（API key はデプロイ単位の単一キーでユーザー識別ができないため、第三者に他人の cache ID が列挙される事故を防ぐ目的）。揮発ツールの URL/ID は作成時に保存し、共有相手にのみ伝えてください
 
 ## 環境構築
 
@@ -97,19 +98,11 @@ Response (200):
     "url": "https://example.com/tool-trust/abc123...",
     "updatedAt": "2024-01-15T12:00:00Z",
     "mode": "gist"
-  },
-  {
-    "id": "c_lwxyz-a1b2c3d4",
-    "name": "ハッカソンデモ",
-    "trust": false,
-    "url": "https://example.com/tool/c_lwxyz-a1b2c3d4",
-    "updatedAt": "2024-01-15T12:30:00Z",
-    "mode": "cache"
   }
 ]
 ```
 
-`limit`パラメータで取得件数を指定（1-10、デフォルト10）。HTMLソースは含まれません。永続モード（Gist）と揮発モード（cache）の結果がマージされ、`updatedAt` 降順で返されます。
+`limit`パラメータで取得件数を指定（1-10、デフォルト10）。HTMLソースは含まれません。**永続モード（Gist）のエントリのみ返されます**。揮発モード（cache）はプライバシー保護のため一覧に含まれません。
 
 ### HTML登録
 
@@ -250,7 +243,7 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `get_tool` | IDからHTMLソースを取得（揮発・永続を自動判別） |
 | `update_tool` | 既存ツールのHTMLを上書き更新（htmlパラメータ必須） |
 | `import_gist` | 既存Gistにメタデータのみ追加（永続モード専用） |
-| `list_recent_tools` | 直近のツール一覧を取得（最大10件、揮発・永続マージ） |
+| `list_recent_tools` | 直近のツール一覧を取得（最大10件、永続モードのみ。揮発はプライバシー保護のため含まない） |
 | `get_gist_url` | Gistの編集ページURLを取得（永続モード専用） |
 | `get_qr_code` | ツール共有用QRコードのURLを取得 |
 

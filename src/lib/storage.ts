@@ -9,7 +9,6 @@ import {
   createCacheEntry,
   getCacheEntry,
   updateCacheEntry,
-  listRecentCacheEntries,
   isCacheEnabled,
   isCacheId,
 } from "@/lib/cache";
@@ -173,31 +172,20 @@ export interface MergedToolSummary extends ToolSummary {
   mode: StorageMode;
 }
 
+// 揮発モード（cache）のエントリは list に含めない:
+// API key は デプロイ単位の単一キーで個別ユーザーを識別できないため、
+// 第三者に他人の cache ID が列挙される事故を避ける。
+// 揮発モードのツールは作成時に返される URL/ID を共有相手にだけ伝える運用。
 export async function listRecentTools(
   limit: number,
   baseUrl: string
 ): Promise<MergedToolSummary[]> {
   const safeLimit = Math.min(Math.max(limit, 1), 10);
 
-  const [gistResults, cacheResults] = await Promise.all([
-    gistAvailable()
-      ? listRecentGists(safeLimit, baseUrl).catch(() => [])
-      : Promise.resolve([] as ToolSummary[]),
-    isCacheEnabled() || !gistAvailable()
-      ? listRecentCacheEntries(safeLimit, baseUrl).catch(() => [])
-      : Promise.resolve([]),
-  ]);
+  if (!gistAvailable()) {
+    return [];
+  }
 
-  const merged: MergedToolSummary[] = [
-    ...gistResults.map((t) => ({ ...t, mode: "gist" as const })),
-    ...cacheResults.map((t) => ({ ...t, mode: "cache" as const })),
-  ];
-
-  merged.sort((a, b) => {
-    const ta = new Date(a.updatedAt).getTime();
-    const tb = new Date(b.updatedAt).getTime();
-    return tb - ta;
-  });
-
-  return merged.slice(0, safeLimit);
+  const gistResults = await listRecentGists(safeLimit, baseUrl).catch(() => [] as ToolSummary[]);
+  return gistResults.map((t) => ({ ...t, mode: "gist" as const }));
 }

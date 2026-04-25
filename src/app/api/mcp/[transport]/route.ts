@@ -346,7 +346,8 @@ const handler = createMcpHandler(
       "list_recent_tools",
       {
         title: "List Recent Tools",
-        description: "直近で作成・更新されたツールの一覧を取得します（最大10件）。HTMLソースは含まれません。揮発モードと永続モードの両方をマージして返します",
+        description:
+          "直近で作成・更新されたツールの一覧を取得します（最大10件、永続モードのみ）。HTMLソースは含まれません。揮発モード（c_で始まるID）はプライバシー保護のため一覧に含まれません。揮発モードのツールは作成時に返されるURL/IDを記録し、共有相手にだけ伝える運用としてください",
         inputSchema: {
           limit: z.number().min(1).max(10).optional().describe("取得件数（1-10、デフォルト10）"),
         },
