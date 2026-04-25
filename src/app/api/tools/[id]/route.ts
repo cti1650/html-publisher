@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTool, updateTool } from "@/lib/storage";
-import { verifyApiKey, unauthorizedResponse } from "@/lib/auth";
+import { checkAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/auth";
+import { isCacheId } from "@/lib/cache";
 import { notifySlack } from "@/lib/slack";
 
 export async function GET(
@@ -45,15 +46,24 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!verifyApiKey(request)) {
+  const auth = checkAuth(request);
+  if (auth === "rejected") {
     return unauthorizedResponse();
   }
+  const authenticated = auth === "authenticated";
 
   try {
     const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
+    }
+
+    // 永続モード（Gist）の更新は認証必須。匿名は揮発モードのみ更新可
+    if (!authenticated && !isCacheId(id)) {
+      return forbiddenResponse(
+        "永続モード（Gist）の更新には認証が必要です。揮発モード（c_で始まるID）のみ匿名で更新可能です"
+      );
     }
 
     const body = await request.json();

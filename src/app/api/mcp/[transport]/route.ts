@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { getGist, addMetadata } from "@/lib/gist";
 import { createTool, getTool, updateTool, listRecentTools } from "@/lib/storage";
 import { isCacheId } from "@/lib/cache";
-import { verifyApiKey } from "@/lib/auth";
+import { checkAuth, authContext } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
 import { HOW_TO_USE_GUIDE } from "@/lib/guide";
 
@@ -49,7 +49,7 @@ const handler = createMcpHandler(
       {
         title: "Create Tool",
         description:
-          "【実行前に必ずユーザーに確認を取ること】HTMLコンテンツを新規作成し、公開URLを取得します。実行前に「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「ephemeralモードの有無」をユーザーに説明し、作成してよいか確認を取ってください。ephemeral: trueにするとGistを使わず揮発キャッシュ（デフォルト6時間、アクセス毎にTTL延長）に保存されます",
+          "【実行前に必ずユーザーに確認を取ること】HTMLコンテンツを新規作成し、公開URLを取得します。実行前に「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「ephemeralモードの有無」をユーザーに説明し、作成してよいか確認を取ってください。ephemeral: trueにするとGistを使わず揮発キャッシュ（デフォルト6時間、アクセス毎にTTL延長）に保存されます。**APIキー無しの匿名アクセス時は強制的に揮発モードになります（Gist書き込みは認証必須）**",
         inputSchema: {
           html: z.string().min(1).describe("公開するHTMLコンテンツ"),
           name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
@@ -90,7 +90,11 @@ const handler = createMcpHandler(
             ],
           };
         }
-        const result = await createTool(html, { name, memo, trust, ephemeral });
+        // 匿名アクセスは揮発モード固定（永続モード=Gist書き込みは認証必須）
+        const authenticated = authContext.getStore()?.status === "authenticated";
+        const finalEphemeral = !authenticated ? true : ephemeral;
+
+        const result = await createTool(html, { name, memo, trust, ephemeral: finalEphemeral });
         const toolPath = result.trust ? "tool-trust" : "tool";
         const url = `${getBaseUrl()}/${toolPath}/${result.id}`;
 
@@ -161,7 +165,7 @@ const handler = createMcpHandler(
       {
         title: "Update Tool",
         description:
-          "【実行前に必ずユーザーに確認を取ること】【htmlパラメータ必須】HTMLコンテンツを上書き更新します。実行前に「どのような変更を行うか」「変更箇所の概要」をユーザーに説明し、更新してよいか確認を取ってください。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください。揮発モード・永続モードの判別はIDで自動的に行われます",
+          "【実行前に必ずユーザーに確認を取ること】【htmlパラメータ必須】HTMLコンテンツを上書き更新します。実行前に「どのような変更を行うか」「変更箇所の概要」をユーザーに説明し、更新してよいか確認を取ってください。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください。揮発モード・永続モードの判別はIDで自動的に行われます。**APIキー無しの匿名アクセス時は揮発モードのIDのみ更新可能（永続Gistの更新は認証必須）**",
         inputSchema: {
           id: z
             .string()
@@ -202,6 +206,26 @@ const handler = createMcpHandler(
             ],
           };
         }
+        // 永続モード（Gist）の更新は認証必須。匿名は揮発モードのみ更新可
+        const authenticated = authContext.getStore()?.status === "authenticated";
+        if (!authenticated && !isCacheId(id)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    error:
+                      "永続モード（Gist）の更新には認証が必要です。揮発モード（c_で始まるID）のみ匿名で更新可能です",
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
         const result = await updateTool(id, html, { name, memo, trust });
         const toolPath = result.trust ? "tool-trust" : "tool";
         const url = `${getBaseUrl()}/${toolPath}/${id}`;
@@ -237,7 +261,7 @@ const handler = createMcpHandler(
       {
         title: "Import Gist",
         description:
-          "【実行前に必ずユーザーに確認を取ること】【HTMLを変更せずにメタデータのみ追加】手動で作成したGistをHTML Publisherの管理対象に取り込みます。実行前に「対象のGist ID」「設定するメタデータ」をユーザーに説明し、取り込んでよいか確認を取ってください。HTMLの中身は一切変更しません。揮発モード（c_で始まるID）には使えません",
+          "【実行前に必ずユーザーに確認を取ること】【HTMLを変更せずにメタデータのみ追加】手動で作成したGistをHTML Publisherの管理対象に取り込みます。実行前に「対象のGist ID」「設定するメタデータ」をユーザーに説明し、取り込んでよいか確認を取ってください。HTMLの中身は一切変更しません。揮発モード（c_で始まるID）には使えません。**APIキー認証必須（匿名アクセス不可）**",
         inputSchema: {
           id: z
             .string()
@@ -284,6 +308,22 @@ const handler = createMcpHandler(
                 type: "text",
                 text: JSON.stringify(
                   { error: "import_gistは揮発モード（c_で始まるID）には使用できません。Gist IDを指定してください" },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+        // import_gist は Gist 書き込みを伴うため認証必須
+        const authenticated = authContext.getStore()?.status === "authenticated";
+        if (!authenticated) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  { error: "import_gistの実行には認証が必要です。APIキーを設定してください" },
                   null,
                   2
                 ),
@@ -447,20 +487,22 @@ const handler = createMcpHandler(
   }
 );
 
-function withApiKeyAuth(
+function withAuth(
   mcpHandler: (request: Request) => Promise<Response>
 ): (request: Request) => Promise<Response> {
   return async (request: Request) => {
-    if (!verifyApiKey(request)) {
+    const status = checkAuth(request);
+    if (status === "rejected") {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       });
     }
-    return mcpHandler(request);
+    // 認証状態を AsyncLocalStorage で各ツールハンドラーに伝搬
+    return authContext.run({ status }, () => mcpHandler(request));
   };
 }
 
-const authHandler = withApiKeyAuth(handler);
+const authHandler = withAuth(handler);
 
 export { authHandler as GET, authHandler as POST, authHandler as DELETE };

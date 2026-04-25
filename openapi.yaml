@@ -87,11 +87,15 @@ paths:
     post:
       summary: 新しいツールを作成
       description: |
-        HTMLコンテンツをGitHub Gistにアップロードし、公開URLを生成します。
+        HTMLコンテンツをアップロードし、公開URLを生成します。
 
         レスポンスに含まれる `id` と `url` を保存してください。
         - `url`: ブラウザで開くとHTMLが表示されるURL（trustの値によって `/tool/` または `/tool-trust/` になります）
         - `id`: 後で更新する際に使用するID（URLの末尾部分と同じ）
+
+        **認証と保存先**:
+        - APIキー認証あり → `ephemeral` の指定に従い、Gist (永続) または cache (揮発) に保存
+        - APIキー未提示 → **揮発モード固定** (cache 保存、最終アクセスから約5時間で自動削除)
       operationId: createTool
       tags:
         - Tools
@@ -235,6 +239,10 @@ paths:
         - ツールURL `/tool/{id}` または `/tool-trust/{id}` から抽出（例: `https://example.com/tool/abc123` → `abc123`）
 
         `trust` フラグを変更すると、URLのパスが `/tool/` から `/tool-trust/` に変わります（またはその逆）。
+
+        **認証**:
+        - APIキー認証あり → 永続(Gist)・揮発(cache) どちらの ID も更新可能
+        - APIキー未提示 → 揮発モード（`c_` で始まるID）のみ更新可能。永続Gistの更新は 403 エラー
       operationId: updateTool
       tags:
         - Tools
@@ -279,6 +287,14 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "html is required and must be a string"
+        "403":
+          description: 認証なしで永続Gistの更新を試みた
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "永続モード（Gist）の更新には認証が必要です。揮発モード（c_で始まるID）のみ匿名で更新可能です"
         "404":
           description: ツールが見つかりません
           content:
