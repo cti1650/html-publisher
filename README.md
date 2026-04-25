@@ -210,6 +210,8 @@ https://example.com/api/mcp/mcp
 
 MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`SECRET`と`GITHUB_TOKEN`から動的に生成されます。
 
+> **公開デプロイ運用**: `SECRET` を未設定にしておくと認証は完全にスキップされ、誰でも利用可能になります。この場合、`GITHUB_TOKEN` も未設定にすることで「揮発モード専用・最終アクセスから5時間で自動削除」のサンドボックス的な公開MCPサーバーとして運用できます（ハッカソン会場など）。Gist書き込みを伴わないため、第三者に好きなだけ使われても安全です。
+
 1. SECRETを生成して環境変数に設定：
    ```bash
    openssl rand -hex 32
@@ -239,6 +241,7 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 
 | ツール名 | 説明 |
 |---------|------|
+| `how_to_use` | HTML Publisherの使い方ガイドを取得（推奨ワークフロー、各ツールの使い分け、trustフラグの判断基準など） |
 | `create_tool` | HTMLを新規作成し公開URLを取得（`ephemeral: true` で揮発モード） |
 | `get_tool` | IDからHTMLソースを取得（揮発・永続を自動判別） |
 | `update_tool` | 既存ツールのHTMLを上書き更新（htmlパラメータ必須） |
@@ -246,6 +249,8 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `list_recent_tools` | 直近のツール一覧を取得（最大10件、永続モードのみ。揮発はプライバシー保護のため含まない） |
 | `get_gist_url` | Gistの編集ページURLを取得（永続モード専用） |
 | `get_qr_code` | ツール共有用QRコードのURLを取得 |
+
+スキルプラグインを導入していないクライアントでも、`how_to_use` を最初に呼び出すことで推奨ワークフローを把握できます。
 
 ### 信頼モード（trust）の安全機構
 
@@ -292,7 +297,41 @@ Claude Codeを使用する場合、専用のスキルプラグインを導入す
 
 ### クライアント設定例
 
-#### Streamable HTTP対応クライアント（Cursor等）
+#### 公開デプロイ（APIキー不要、揮発モード専用）
+
+`SECRET` を設定せずデプロイした公開インスタンスでは、APIキーなしで利用できます。
+**ただし保存されるツールは「最終アクセスから5時間」で自動削除される揮発モード専用です。**永続的に残したい場合は自前でセルフホストしてください。
+
+##### Streamable HTTP対応クライアント（Cursor等）
+
+```json
+{
+  "mcpServers": {
+    "html-publisher": {
+      "url": "https://example.com/api/mcp/mcp"
+    }
+  }
+}
+```
+
+##### stdio専用クライアント（Claude Desktop等）
+
+```json
+{
+  "mcpServers": {
+    "html-publisher": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://example.com/api/mcp/mcp"]
+    }
+  }
+}
+```
+
+#### プライベートデプロイ（APIキー認証あり）
+
+セルフホストで `SECRET` + `GITHUB_TOKEN` を設定したインスタンス向け。永続モード（Gist保存）も利用可能。
+
+##### Streamable HTTP対応クライアント
 
 ```json
 {
@@ -304,7 +343,7 @@ Claude Codeを使用する場合、専用のスキルプラグインを導入す
 }
 ```
 
-#### stdio専用クライアント（Claude Desktop等）
+##### stdio専用クライアント
 
 ```json
 {
