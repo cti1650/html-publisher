@@ -1,6 +1,5 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
-import QRCode from "qrcode";
 import { getGist, addMetadata } from "@/lib/gist";
 import { createTool, getTool, updateTool, listRecentTools } from "@/lib/storage";
 import { isCacheId } from "@/lib/cache";
@@ -434,7 +433,7 @@ const handler = createMcpHandler(
       {
         title: "Get QR Code",
         description:
-          "【QRコードで共有したい場合はこのツールを使用】ツールのQRコード画像URLを取得します。QRコード画像は既に生成済みで、返されるURLをそのまま共有できます。新しくQRコード生成機能を実装する必要はありません",
+          "【QRコードで共有したい場合はこのツールを使用】ツール共有用のQRコードを中央に表示するページのURLを返します。返されるURLをそのまま共有相手に渡せば、ブラウザでQRコードを表示できます。新しくQRコード生成機能を実装する必要はありません",
         inputSchema: {
           id: z
             .string()
@@ -450,25 +449,17 @@ const handler = createMcpHandler(
         const toolPath = result.trust ? "tool-trust" : "tool";
         const toolUrl = `${getBaseUrl()}/${toolPath}/${id}`;
         const qrSize = size ?? 300;
-        const qrUrl = `${getBaseUrl()}/api/qr/${id}?size=${qrSize}`;
-
-        const qrDataUrl = await QRCode.toDataURL(toolUrl, {
-          width: qrSize,
-          margin: 2,
-          color: { dark: "#000000", light: "#ffffff" },
-        });
-        const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+        const qrPageUrl = `${getBaseUrl()}/qr/${id}?size=${qrSize}`;
 
         return {
           content: [
             {
-              type: "image",
-              data: qrBase64,
-              mimeType: "image/png",
-            },
-            {
               type: "text",
-              text: JSON.stringify({ id, toolUrl, qrUrl, size: qrSize }, null, 2),
+              text: JSON.stringify(
+                { id, toolUrl, qrPageUrl, size: qrSize },
+                null,
+                2
+              ),
             },
           ],
         };

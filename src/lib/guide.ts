@@ -13,7 +13,7 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 | \`import_gist\` | 手動で作成済みのGistをHTML Publisher管理下に取り込み（永続モード専用、HTMLは変更しない） |
 | \`list_recent_tools\` | 直近のツール一覧を取得（永続モードのみ） |
 | \`get_gist_url\` | GistをGitHub上で編集するためのURLを取得（永続モード専用） |
-| \`get_qr_code\` | ツール共有用QRコード画像を取得 |
+| \`get_qr_code\` | ツール共有用QRコードを中央に表示するページのURLを取得 |
 
 ## ストレージモード
 
