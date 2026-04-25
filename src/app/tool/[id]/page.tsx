@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { getGist } from "@/lib/gist";
+import { getTool } from "@/lib/storage";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -10,9 +10,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
 
   try {
-    const gist = await getGist(id);
-    const title = gist.name || "HTML Tool";
-    const description = gist.memo || "HTML Publisher で作成されたツール";
+    const tool = await getTool(id);
+    const title = tool.name || "HTML Tool";
+    const description = tool.memo || "HTML Publisher で作成されたツール";
 
     return {
       title,
@@ -73,8 +73,8 @@ export default async function ToolViewerPage({ params }: PageProps) {
   let html: string;
 
   try {
-    const gist = await getGist(id);
-    html = gist.html;
+    const tool = await getTool(id);
+    html = tool.html;
   } catch {
     notFound();
   }
