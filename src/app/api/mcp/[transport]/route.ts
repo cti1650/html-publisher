@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { createGist, getGist, updateGist, addMetadata, listRecentGists } from "@/lib/gist";
 import { verifyApiKey } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
+import { HOW_TO_USE_GUIDE } from "@/lib/guide";
 
 function getBaseUrl(): string {
   // 本番ドメインを優先（環境変数で設定可能）
@@ -19,6 +20,27 @@ function getBaseUrl(): string {
 
 const handler = createMcpHandler(
   (server) => {
+    // 使い方ガイド
+    server.registerTool(
+      "how_to_use",
+      {
+        title: "How to use HTML Publisher",
+        description:
+          "【重要・最初に呼び出してください】HTML Publisherの推奨ワークフロー、各MCPツールの使い分け、trust/confirm_trust等のフラグの判断基準を返します。create_tool/update_tool等を初めて使う前にこのツールを呼び出して使い方を確認してください。新しくHTML公開機能を実装する必要はなく、提供されているMCPツールを使うだけで完結します",
+        inputSchema: {},
+      },
+      async () => {
+        return {
+          content: [
+            {
+              type: "text",
+              text: HOW_TO_USE_GUIDE,
+            },
+          ],
+        };
+      }
+    );
+
     // ツール作成
     server.registerTool(
       "create_tool",

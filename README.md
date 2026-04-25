@@ -204,6 +204,7 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 
 | ツール名 | 説明 |
 |---------|------|
+| `how_to_use` | HTML Publisherの使い方ガイドを取得（推奨ワークフロー、各ツールの使い分け、trustフラグの判断基準など） |
 | `create_tool` | HTMLを新規作成し公開URLを取得 |
 | `get_tool` | IDからHTMLソースを取得 |
 | `update_tool` | 既存ツールのHTMLを上書き更新（htmlパラメータ必須） |
@@ -211,6 +212,8 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `list_recent_tools` | 直近のツール一覧を取得（最大10件、HTMLなし） |
 | `get_gist_url` | Gistの編集ページURLを取得 |
 | `get_qr_code` | ツール共有用QRコードのURLを取得 |
+
+スキルプラグインを導入していないクライアントでも、`how_to_use` を最初に呼び出すことで推奨ワークフローを把握できます。
 
 ### 信頼モード（trust）の安全機構
 
