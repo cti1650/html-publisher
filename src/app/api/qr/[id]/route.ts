@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGist } from "@/lib/gist";
+import { getTool } from "@/lib/storage";
 import QRCode from "qrcode";
 
 function getBaseUrl(request: NextRequest): string {
@@ -20,9 +20,9 @@ export async function GET(
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
-    const gist = await getGist(id);
+    const tool = await getTool(id);
     const baseUrl = getBaseUrl(request);
-    const toolPath = gist.trust ? "tool-trust" : "tool";
+    const toolPath = tool.trust ? "tool-trust" : "tool";
     const toolUrl = `${baseUrl}/${toolPath}/${id}`;
 
     const sizeParam = request.nextUrl.searchParams.get("size");
@@ -46,7 +46,10 @@ export async function GET(
   } catch (error) {
     console.error("Error generating QR code:", error);
 
-    if (error instanceof Error && error.message === "Gist not found") {
+    if (
+      error instanceof Error &&
+      (error.message === "Gist not found" || error.message === "Tool not found")
+    ) {
       return NextResponse.json({ error: "Tool not found" }, { status: 404 });
     }
 

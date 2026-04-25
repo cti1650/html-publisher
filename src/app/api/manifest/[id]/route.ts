@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGist } from "@/lib/gist";
+import { getTool } from "@/lib/storage";
 
 export async function GET(
   request: NextRequest,
@@ -12,15 +12,15 @@ export async function GET(
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
-    const gist = await getGist(id);
+    const tool = await getTool(id);
     const baseUrl = request.nextUrl.origin;
-    const toolPath = gist.trust ? "tool-trust" : "tool";
+    const toolPath = tool.trust ? "tool-trust" : "tool";
     const startUrl = `${baseUrl}/${toolPath}/${id}`;
 
     const manifest = {
-      name: gist.name || "HTML Tool",
-      short_name: gist.name ? gist.name.slice(0, 12) : "Tool",
-      description: gist.memo || "HTML Publisher で作成されたツール",
+      name: tool.name || "HTML Tool",
+      short_name: tool.name ? tool.name.slice(0, 12) : "Tool",
+      description: tool.memo || "HTML Publisher で作成されたツール",
       start_url: startUrl,
       scope: startUrl,
       display: "standalone",
@@ -52,7 +52,10 @@ export async function GET(
   } catch (error) {
     console.error("Error generating manifest:", error);
 
-    if (error instanceof Error && error.message === "Gist not found") {
+    if (
+      error instanceof Error &&
+      (error.message === "Gist not found" || error.message === "Tool not found")
+    ) {
       return NextResponse.json({ error: "Tool not found" }, { status: 404 });
     }
 

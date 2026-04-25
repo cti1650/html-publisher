@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGist, updateGist } from "@/lib/gist";
+import { getTool, updateTool } from "@/lib/storage";
 import { verifyApiKey, unauthorizedResponse } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
 
@@ -14,17 +14,23 @@ export async function GET(
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
-    const result = await getGist(id);
+    const result = await getTool(id);
 
     const baseUrl = request.nextUrl.origin;
     const toolPath = result.trust ? "tool-trust" : "tool";
     const url = `${baseUrl}/${toolPath}/${id}`;
 
-    return NextResponse.json({ id, html: result.html, rawUrl: result.rawUrl, url, trust: result.trust }, { status: 200 });
+    return NextResponse.json(
+      { id, html: result.html, rawUrl: result.rawUrl, url, trust: result.trust, mode: result.mode },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error getting tool:", error);
 
-    if (error instanceof Error && error.message === "Gist not found") {
+    if (
+      error instanceof Error &&
+      (error.message === "Gist not found" || error.message === "Tool not found")
+    ) {
       return NextResponse.json({ error: "Tool not found" }, { status: 404 });
     }
 
@@ -60,20 +66,33 @@ export async function PUT(
       );
     }
 
-    const result = await updateGist(id, html, { name, memo, trust });
+    const result = await updateTool(id, html, { name, memo, trust });
 
     const baseUrl = request.nextUrl.origin;
     const toolPath = result.trust ? "tool-trust" : "tool";
     const url = `${baseUrl}/${toolPath}/${id}`;
 
-    // updateGistから返されたname/memo/trustを使用（既存の値がマージされている）
-    await notifySlack({ type: "update", id, url, name: result.name, memo: result.memo, trust: result.trust });
+    await notifySlack({
+      type: "update",
+      id,
+      url,
+      name: result.name,
+      memo: result.memo,
+      trust: result.trust,
+      mode: result.mode,
+    });
 
-    return NextResponse.json({ id, url, rawUrl: result.rawUrl, trust: result.trust }, { status: 200 });
+    return NextResponse.json(
+      { id, url, rawUrl: result.rawUrl, trust: result.trust, mode: result.mode },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error updating tool:", error);
 
-    if (error instanceof Error && error.message === "Gist not found") {
+    if (
+      error instanceof Error &&
+      (error.message === "Gist not found" || error.message === "Tool not found")
+    ) {
       return NextResponse.json({ error: "Tool not found" }, { status: 404 });
     }
 

@@ -7,9 +7,10 @@ interface NotifyOptions {
   name?: string;
   memo?: string;
   trust?: boolean;
+  mode?: "gist" | "cache";
 }
 
-export async function notifySlack({ type, id, url, name, memo, trust }: NotifyOptions): Promise<void> {
+export async function notifySlack({ type, id, url, name, memo, trust, mode }: NotifyOptions): Promise<void> {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
   if (!webhookUrl) {
@@ -21,6 +22,7 @@ export async function notifySlack({ type, id, url, name, memo, trust }: NotifyOp
   const toolName = name ? `\nツール名: ${name}` : "";
   const memoLine = memo ? `\nメモ: ${memo}` : "";
   const trustLine = trust ? "\n:warning: 信頼モード有効" : "";
+  const modeLine = mode === "cache" ? "\n:hourglass_flowing_sand: 揮発モード（キャッシュ）" : "";
 
   const payload = {
     blocks: [
@@ -28,7 +30,7 @@ export async function notifySlack({ type, id, url, name, memo, trust }: NotifyOp
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `${emoji} *${action}*\nID: \`${id}\`${toolName}${memoLine}${trustLine}\n<${url}|ツールを開く>`,
+          text: `${emoji} *${action}*\nID: \`${id}\`${toolName}${memoLine}${trustLine}${modeLine}\n<${url}|ツールを開く>`,
         },
       },
     ],

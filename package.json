@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.25.2",
+    "@upstash/redis": "^1.37.0",
     "js-yaml": "^4.1.1",
     "mcp-handler": "^1.0.7",
     "next": "16.1.6",
