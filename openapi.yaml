@@ -42,6 +42,10 @@ paths:
       description: |
         直近で作成・更新されたツールの一覧を取得します（最大10件）。
         HTMLソースは含まれません。
+
+        **永続モード（Gist）のエントリのみ返されます**。
+        揮発モード（cache、`c_` で始まるID）はプライバシー保護のため一覧に含まれません。
+        揮発モードのツールは作成時に返される URL/ID を記録し、共有相手にのみ伝える運用を想定しています。
       operationId: listTools
       tags:
         - Tools
@@ -314,17 +318,23 @@ components:
           description: |
             信頼モード（任意）。trueの場合はlocalStorage等が使える信頼済みURLを発行します。
             URLは `/tool-trust/{id}` になります。
+        ephemeral:
+          type: boolean
+          description: |
+            揮発モード（任意）。trueの場合はGistではなくキャッシュに保存され、
+            最後のアクセスから一定時間（デフォルト6時間）で自動削除されます。
+            ハッカソンや一時共有用途に推奨。GITHUB_TOKEN未設定時は自動的に揮発モードになります。
+            揮発モードのIDは `c_` プレフィックス付き。
 
     CreateToolResponse:
       type: object
       required:
         - id
         - url
-        - rawUrl
       properties:
         id:
           type: string
-          description: ツール（Gist）のID
+          description: ツールのID（揮発モードは `c_` プレフィックス付き、それ以外はGist ID）
         url:
           type: string
           format: uri
@@ -332,29 +342,32 @@ components:
         rawUrl:
           type: string
           format: uri
-          description: GistのRaw URL
+          description: GistのRaw URL（永続モードのみ）
         trust:
           type: boolean
           description: 信頼モードが有効かどうか
+        mode:
+          type: string
+          enum: [gist, cache]
+          description: ストレージモード（gist=永続、cache=揮発）
 
     GetToolResponse:
       type: object
       required:
         - id
         - html
-        - rawUrl
         - url
       properties:
         id:
           type: string
-          description: ツール（Gist）のID
+          description: ツールのID
         html:
           type: string
           description: HTMLコンテンツ
         rawUrl:
           type: string
           format: uri
-          description: GistのRaw URL
+          description: GistのRaw URL（永続モードのみ）
         url:
           type: string
           format: uri
@@ -362,6 +375,10 @@ components:
         trust:
           type: boolean
           description: 信頼モードが有効かどうか
+        mode:
+          type: string
+          enum: [gist, cache]
+          description: ストレージモード（gist=永続、cache=揮発）
 
     ToolSummary:
       type: object
@@ -372,7 +389,7 @@ components:
       properties:
         id:
           type: string
-          description: ツール（Gist）のID
+          description: ツールのID
         name:
           type: string
           description: ツール名
@@ -390,6 +407,10 @@ components:
           type: string
           format: date-time
           description: 最終更新日時
+        mode:
+          type: string
+          enum: [gist, cache]
+          description: ストレージモード（gist=永続、cache=揮発）
 
     ErrorResponse:
       type: object

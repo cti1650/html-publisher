@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { getGist } from "@/lib/gist";
+import { getTool } from "@/lib/storage";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -10,10 +10,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
 
   try {
-    const gist = await getGist(id);
+    const tool = await getTool(id);
 
     // trustでないツールはメタデータも返さない
-    if (!gist.trust) {
+    if (!tool.trust) {
       return {
         title: "Not Found",
         robots: {
@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       };
     }
 
-    const title = gist.name || "HTML Tool";
-    const description = gist.memo || "HTML Publisher で作成されたツール（信頼モード）";
+    const title = tool.name || "HTML Tool";
+    const description = tool.memo || "HTML Publisher で作成されたツール（信頼モード）";
 
     return {
       title,
@@ -86,9 +86,9 @@ export default async function TrustedToolViewerPage({ params }: PageProps) {
   let trust: boolean | undefined;
 
   try {
-    const gist = await getGist(id);
-    html = gist.html;
-    trust = gist.trust;
+    const tool = await getTool(id);
+    html = tool.html;
+    trust = tool.trust;
   } catch {
     notFound();
   }

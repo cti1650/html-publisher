@@ -9,9 +9,21 @@ ChatGPTなどで生成した単一HTMLファイルをAPI経由で公開し、URL
 ## 機能
 
 - HTMLファイルをAPI経由で登録
-- GitHub Gistに保存
+- GitHub Gistに保存（永続モード）または Upstash Redis にキャッシュ保存（揮発モード）
 - 公開URLを発行
 - iframe sandboxで安全に実行
+
+## ストレージモード
+
+| モード | 保存先 | ID形式 | 寿命 | 用途 |
+|---|---|---|---|---|
+| 永続 | GitHub Gist | 32文字hex（例: `abc123...`） | 永続 | 通常の公開・本格運用 |
+| 揮発 | Upstash Redis (or in-memory) | `c_<timestamp36>-<hash8>` | 最終アクセスから6時間（環境変数で変更可） | ハッカソン、一時共有、Gist残したくない時 |
+
+- アクセス毎に TTL がスライド延長されるため、使われ続けている限り消えません
+- `ephemeral: true` を指定するか、`GITHUB_TOKEN` 未設定時に自動で揮発モードになります
+- `get/update` は ID 形式から自動判別（`c_` で始まれば揮発、それ以外は Gist）
+- **揮発モードのエントリは `list` 系 API には含まれません**（API key はデプロイ単位の単一キーでユーザー識別ができないため、第三者に他人の cache ID が列挙される事故を防ぐ目的）。揮発ツールの URL/ID は作成時に保存し、共有相手にのみ伝えてください
 
 ## 環境構築
 
@@ -23,17 +35,31 @@ npm install
 
 ### 2. 環境変数の設定
 
-`.env.local`を作成し、GitHub Personal Access Token を設定：
+`.env.local`を作成し、用途に応じて以下を設定：
 
 ```env
+# 永続モード（Gist）を使う場合
 GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+
+# 揮発モード（キャッシュ）を使う場合
+UPSTASH_REDIS_REST_URL=https://xxxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=xxxxxxxxxxxx
+CACHE_TTL_SECONDS=21600  # 任意。デフォルト 6時間（21600秒）
 ```
+
+両方設定しても OK（その場合デフォルトは Gist、`ephemeral: true` で揮発モードに切り替え）。
+両方未設定の場合、ローカル開発用の in-memory キャッシュが使われます（プロセス再起動で消える）。
 
 GitHub Personal Access Token (PAT) の作成方法：
 1. https://github.com/settings/tokens にアクセス
 2. "Generate new token (classic)" をクリック
 3. `gist` スコープにチェックを入れる
 4. トークンを生成してコピー
+
+Upstash Redis の準備:
+1. https://console.upstash.com/redis にアクセス
+2. データベースを作成（無料枠で十分）
+3. "REST API" タブから `UPSTASH_REDIS_REST_URL` と `UPSTASH_REDIS_REST_TOKEN` を取得
 
 ### 3. 開発サーバーの起動
 
@@ -70,12 +96,13 @@ Response (200):
     "memo": "方位を表示",
     "trust": true,
     "url": "https://example.com/tool-trust/abc123...",
-    "updatedAt": "2024-01-15T12:00:00Z"
+    "updatedAt": "2024-01-15T12:00:00Z",
+    "mode": "gist"
   }
 ]
 ```
 
-`limit`パラメータで取得件数を指定（1-10、デフォルト10）。HTMLソースは含まれません。
+`limit`パラメータで取得件数を指定（1-10、デフォルト10）。HTMLソースは含まれません。**永続モード（Gist）のエントリのみ返されます**。揮発モード（cache）はプライバシー保護のため一覧に含まれません。
 
 ### HTML登録
 
@@ -88,15 +115,17 @@ Request:
   "html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>",
   "name": "コンパスアプリ",  // 任意: ツール名
   "memo": "初回作成",  // 任意: 変更メモ
-  "trust": false  // 任意: 信頼モード（trueでlocalStorage等を許可）
+  "trust": false,  // 任意: 信頼モード（trueでlocalStorage等を許可）
+  "ephemeral": false  // 任意: 揮発モード（trueでキャッシュ保存・6時間TTL）
 }
 
 Response (201):
 {
   "id": "abc123...",
   "url": "https://example.com/tool/abc123...",
-  "rawUrl": "https://gist.githubusercontent.com/...",
-  "trust": false
+  "rawUrl": "https://gist.githubusercontent.com/...",  // 永続モードのみ
+  "trust": false,
+  "mode": "gist"  // "gist" or "cache"
 }
 ```
 
@@ -117,11 +146,14 @@ Response (200):
 {
   "id": "abc123...",
   "html": "<!DOCTYPE html>...",
-  "rawUrl": "https://gist.githubusercontent.com/...",
+  "rawUrl": "https://gist.githubusercontent.com/...",  // 永続モードのみ
   "url": "https://example.com/tool/abc123...",
-  "trust": false
+  "trust": false,
+  "mode": "gist"  // "gist" or "cache"
 }
 ```
+
+ID 形式から自動判別され、永続・揮発どちらでも同じエンドポイントで取得できます。揮発モードのエントリはアクセス毎に TTL が延長されます。
 
 ### ツール更新
 
@@ -141,10 +173,13 @@ Response (200):
 {
   "id": "abc123...",
   "url": "https://example.com/tool-trust/abc123...",
-  "rawUrl": "https://gist.githubusercontent.com/...",
-  "trust": true
+  "rawUrl": "https://gist.githubusercontent.com/...",  // 永続モードのみ
+  "trust": true,
+  "mode": "gist"
 }
 ```
+
+ID 形式（`c_` で始まるかどうか）から自動的に揮発・永続どちらを更新するか判別されます。
 
 ### OpenAPI仕様取得
 
@@ -174,6 +209,8 @@ https://example.com/api/mcp/mcp
 ### 認証
 
 MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`SECRET`と`GITHUB_TOKEN`から動的に生成されます。
+
+> **公開デプロイ運用**: `SECRET` を未設定にしておくと認証は完全にスキップされ、誰でも利用可能になります。この場合、`GITHUB_TOKEN` も未設定にすることで「揮発モード専用・最終アクセスから5時間で自動削除」のサンドボックス的な公開MCPサーバーとして運用できます（ハッカソン会場など）。Gist書き込みを伴わないため、第三者に好きなだけ使われても安全です。
 
 1. SECRETを生成して環境変数に設定：
    ```bash
@@ -205,12 +242,12 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | ツール名 | 説明 |
 |---------|------|
 | `how_to_use` | HTML Publisherの使い方ガイドを取得（推奨ワークフロー、各ツールの使い分け、trustフラグの判断基準など） |
-| `create_tool` | HTMLを新規作成し公開URLを取得 |
-| `get_tool` | IDからHTMLソースを取得 |
+| `create_tool` | HTMLを新規作成し公開URLを取得（`ephemeral: true` で揮発モード） |
+| `get_tool` | IDからHTMLソースを取得（揮発・永続を自動判別） |
 | `update_tool` | 既存ツールのHTMLを上書き更新（htmlパラメータ必須） |
-| `import_gist` | 既存Gistにメタデータのみ追加（HTMLは変更しない） |
-| `list_recent_tools` | 直近のツール一覧を取得（最大10件、HTMLなし） |
-| `get_gist_url` | Gistの編集ページURLを取得 |
+| `import_gist` | 既存Gistにメタデータのみ追加（永続モード専用） |
+| `list_recent_tools` | 直近のツール一覧を取得（最大10件、永続モードのみ。揮発はプライバシー保護のため含まない） |
+| `get_gist_url` | Gistの編集ページURLを取得（永続モード専用） |
 | `get_qr_code` | ツール共有用QRコードのURLを取得 |
 
 スキルプラグインを導入していないクライアントでも、`how_to_use` を最初に呼び出すことで推奨ワークフローを把握できます。
@@ -260,7 +297,41 @@ Claude Codeを使用する場合、専用のスキルプラグインを導入す
 
 ### クライアント設定例
 
-#### Streamable HTTP対応クライアント（Cursor等）
+#### 公開デプロイ（APIキー不要、揮発モード専用）
+
+`SECRET` を設定せずデプロイした公開インスタンスでは、APIキーなしで利用できます。
+**ただし保存されるツールは「最終アクセスから5時間」で自動削除される揮発モード専用です。**永続的に残したい場合は自前でセルフホストしてください。
+
+##### Streamable HTTP対応クライアント（Cursor等）
+
+```json
+{
+  "mcpServers": {
+    "html-publisher": {
+      "url": "https://example.com/api/mcp/mcp"
+    }
+  }
+}
+```
+
+##### stdio専用クライアント（Claude Desktop等）
+
+```json
+{
+  "mcpServers": {
+    "html-publisher": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://example.com/api/mcp/mcp"]
+    }
+  }
+}
+```
+
+#### プライベートデプロイ（APIキー認証あり）
+
+セルフホストで `SECRET` + `GITHUB_TOKEN` を設定したインスタンス向け。永続モード（Gist保存）も利用可能。
+
+##### Streamable HTTP対応クライアント
 
 ```json
 {
@@ -272,7 +343,7 @@ Claude Codeを使用する場合、専用のスキルプラグインを導入す
 }
 ```
 
-#### stdio専用クライアント（Claude Desktop等）
+##### stdio専用クライアント
 
 ```json
 {
@@ -331,10 +402,14 @@ HTMLがiframe sandbox内で表示されます。
 1. GitHubにリポジトリを作成してプッシュ
 2. Vercelでリポジトリをインポート
 3. 環境変数を設定：
-   - `GITHUB_TOKEN`: GitHub Personal Access Token
+   - `GITHUB_TOKEN`: GitHub Personal Access Token（永続モード使用時）
+   - `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`: Upstash Redis 接続情報（揮発モード使用時）
+   - `CACHE_TTL_SECONDS`: 揮発モードの TTL 秒数（任意、デフォルト 21600 = 6時間）
    - `SECRET`: API_KEY生成用シークレット（任意、設定推奨）
    - `SLACK_WEBHOOK_URL`: Slack通知用Webhook URL（任意）
    - `BASE_URL`: ツールURLのベースドメイン（任意、例: `https://example.com`）
+
+   ※ Vercel にデプロイする場合、揮発モードを使う場合は Upstash 必須です。Vercel の Lambda 環境ではプロセスメモリが共有されないため、Upstash 未設定だと in-memory フォールバックではアクセス毎にツールが消えたように見えます。
 4. デプロイ
 
 ※ `VERCEL_URL`は自動設定されるため、URLの設定は不要です。
