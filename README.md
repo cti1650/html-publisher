@@ -95,12 +95,21 @@ Response (200):
     "memo": "方位を表示",
     "trust": true,
     "url": "https://example.com/tool-trust/abc123...",
-    "updatedAt": "2024-01-15T12:00:00Z"
+    "updatedAt": "2024-01-15T12:00:00Z",
+    "mode": "gist"
+  },
+  {
+    "id": "c_lwxyz-a1b2c3d4",
+    "name": "ハッカソンデモ",
+    "trust": false,
+    "url": "https://example.com/tool/c_lwxyz-a1b2c3d4",
+    "updatedAt": "2024-01-15T12:30:00Z",
+    "mode": "cache"
   }
 ]
 ```
 
-`limit`パラメータで取得件数を指定（1-10、デフォルト10）。HTMLソースは含まれません。
+`limit`パラメータで取得件数を指定（1-10、デフォルト10）。HTMLソースは含まれません。永続モード（Gist）と揮発モード（cache）の結果がマージされ、`updatedAt` 降順で返されます。
 
 ### HTML登録
 
@@ -144,11 +153,14 @@ Response (200):
 {
   "id": "abc123...",
   "html": "<!DOCTYPE html>...",
-  "rawUrl": "https://gist.githubusercontent.com/...",
+  "rawUrl": "https://gist.githubusercontent.com/...",  // 永続モードのみ
   "url": "https://example.com/tool/abc123...",
-  "trust": false
+  "trust": false,
+  "mode": "gist"  // "gist" or "cache"
 }
 ```
+
+ID 形式から自動判別され、永続・揮発どちらでも同じエンドポイントで取得できます。揮発モードのエントリはアクセス毎に TTL が延長されます。
 
 ### ツール更新
 
@@ -168,10 +180,13 @@ Response (200):
 {
   "id": "abc123...",
   "url": "https://example.com/tool-trust/abc123...",
-  "rawUrl": "https://gist.githubusercontent.com/...",
-  "trust": true
+  "rawUrl": "https://gist.githubusercontent.com/...",  // 永続モードのみ
+  "trust": true,
+  "mode": "gist"
 }
 ```
+
+ID 形式（`c_` で始まるかどうか）から自動的に揮発・永続どちらを更新するか判別されます。
 
 ### OpenAPI仕様取得
 
@@ -361,6 +376,8 @@ HTMLがiframe sandbox内で表示されます。
    - `SECRET`: API_KEY生成用シークレット（任意、設定推奨）
    - `SLACK_WEBHOOK_URL`: Slack通知用Webhook URL（任意）
    - `BASE_URL`: ツールURLのベースドメイン（任意、例: `https://example.com`）
+
+   ※ Vercel にデプロイする場合、揮発モードを使う場合は Upstash 必須です。Vercel の Lambda 環境ではプロセスメモリが共有されないため、Upstash 未設定だと in-memory フォールバックではアクセス毎にツールが消えたように見えます。
 4. デプロイ
 
 ※ `VERCEL_URL`は自動設定されるため、URLの設定は不要です。
