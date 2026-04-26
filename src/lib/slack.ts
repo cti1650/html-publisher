@@ -17,12 +17,16 @@ export async function notifySlack({ type, id, url, name, memo, trust, mode }: No
     return;
   }
 
+  // 揮発モード（キャッシュ）はプライバシー保護のためSlack通知を飛ばさない
+  if (mode === "cache") {
+    return;
+  }
+
   const emoji = type === "create" ? ":new:" : ":pencil2:";
   const action = type === "create" ? "新規ツール作成" : "ツール更新";
   const toolName = name ? `\nツール名: ${name}` : "";
   const memoLine = memo ? `\nメモ: ${memo}` : "";
   const trustLine = trust ? "\n:warning: 信頼モード有効" : "";
-  const modeLine = mode === "cache" ? "\n:hourglass_flowing_sand: 揮発モード（キャッシュ）" : "";
 
   const payload = {
     blocks: [
@@ -30,7 +34,7 @@ export async function notifySlack({ type, id, url, name, memo, trust, mode }: No
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `${emoji} *${action}*\nID: \`${id}\`${toolName}${memoLine}${trustLine}${modeLine}\n<${url}|ツールを開く>`,
+          text: `${emoji} *${action}*\nID: \`${id}\`${toolName}${memoLine}${trustLine}\n<${url}|ツールを開く>`,
         },
       },
     ],
