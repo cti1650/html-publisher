@@ -58,3 +58,61 @@ export function unauthorizedResponse(): NextResponse {
 export function forbiddenResponse(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 403 });
 }
+
+export interface AuthCapabilities {
+  status: AuthStatus;
+  label: string;
+  summary: string;
+  forcedEphemeral: boolean;
+  canCreatePersistent: boolean;
+  canCreateEphemeral: boolean;
+  canUpdatePersistent: boolean;
+  canUpdateEphemeral: boolean;
+  canImportGist: boolean;
+  canReadTools: boolean;
+}
+
+export function getAuthCapabilities(status: AuthStatus): AuthCapabilities {
+  if (status === "authenticated") {
+    return {
+      status,
+      label: "認証済み",
+      summary:
+        "正しいAPIキーで接続中。永続モード（Gist）・揮発モード（Cache）の作成/更新、および import_gist が利用可能",
+      forcedEphemeral: false,
+      canCreatePersistent: true,
+      canCreateEphemeral: true,
+      canUpdatePersistent: true,
+      canUpdateEphemeral: true,
+      canImportGist: true,
+      canReadTools: true,
+    };
+  }
+  if (status === "anonymous") {
+    return {
+      status,
+      label: "匿名",
+      summary:
+        "APIキー未提示。揮発モード（Cache）のみ作成・更新可。create_tool は ephemeral 指定に関わらず揮発モード強制。永続Gistの更新および import_gist は認証必須のため利用不可",
+      forcedEphemeral: true,
+      canCreatePersistent: false,
+      canCreateEphemeral: true,
+      canUpdatePersistent: false,
+      canUpdateEphemeral: true,
+      canImportGist: false,
+      canReadTools: true,
+    };
+  }
+  return {
+    status,
+    label: "拒否",
+    summary: "APIキーが不正。全リクエストが401で拒否されます",
+    forcedEphemeral: false,
+    canCreatePersistent: false,
+    canCreateEphemeral: false,
+    canUpdatePersistent: false,
+    canUpdateEphemeral: false,
+    canImportGist: false,
+    canReadTools: false,
+  };
+}

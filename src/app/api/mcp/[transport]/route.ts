@@ -3,9 +3,32 @@ import { z } from "zod";
 import { getGist, addMetadata } from "@/lib/gist";
 import { createTool, getTool, updateTool, listRecentTools } from "@/lib/storage";
 import { isCacheId } from "@/lib/cache";
-import { checkAuth, authContext } from "@/lib/auth";
+import { checkAuth, authContext, getAuthCapabilities, type AuthCapabilities } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
 import { HOW_TO_USE_GUIDE } from "@/lib/guide";
+
+function renderStatusBlock(cap: AuthCapabilities): string {
+  const yes = "可";
+  const no = "不可";
+  const lines = [
+    "## 現在の接続状態",
+    "",
+    `**${cap.label}** — ${cap.summary}`,
+    "",
+    "### このセッションで利用可能な操作",
+    `- 永続モード（Gist）の作成: ${cap.canCreatePersistent ? yes : no}`,
+    `- 永続モード（Gist）の更新: ${cap.canUpdatePersistent ? yes : no}`,
+    `- 揮発モード（Cache）の作成/更新: ${cap.canCreateEphemeral ? yes : no}`,
+    `- import_gist: ${cap.canImportGist ? yes : no}`,
+  ];
+  if (cap.forcedEphemeral) {
+    lines.push(
+      "",
+      "> **重要**: `create_tool` は `ephemeral` 指定に関わらず**揮発モードに強制**されます。ユーザーに「永続/揮発どちらにしますか？」と尋ねる前に、この制約を伝えてください。"
+    );
+  }
+  return lines.join("\n");
+}
 
 function getBaseUrl(): string {
   // 本番ドメインを優先（環境変数で設定可能）
@@ -27,15 +50,41 @@ const handler = createMcpHandler(
       {
         title: "How to use HTML Publisher",
         description:
-          "【重要・最初に呼び出してください】HTML Publisherの推奨ワークフロー、各MCPツールの使い分け、trust/confirm_trust等のフラグの判断基準を返します。create_tool/update_tool等を初めて使う前にこのツールを呼び出して使い方を確認してください。新しくHTML公開機能を実装する必要はなく、提供されているMCPツールを使うだけで完結します",
+          "【重要・最初に呼び出してください】HTML Publisherの推奨ワークフロー、各MCPツールの使い分け、trust/confirm_trust等のフラグの判断基準を返します。冒頭に現在の認証状態（永続モード利用可否）も含まれるので、create_tool/update_tool等を初めて使う前に必ず呼び出してください。新しくHTML公開機能を実装する必要はなく、提供されているMCPツールを使うだけで完結します",
         inputSchema: {},
       },
       async () => {
+        const status = authContext.getStore()?.status ?? "anonymous";
+        const cap = getAuthCapabilities(status);
+        const statusBlock = renderStatusBlock(cap);
         return {
           content: [
             {
               type: "text",
-              text: HOW_TO_USE_GUIDE,
+              text: `${statusBlock}\n\n${HOW_TO_USE_GUIDE}`,
+            },
+          ],
+        };
+      }
+    );
+
+    // 現在の認証状態と利用可能な操作を取得
+    server.registerTool(
+      "get_status",
+      {
+        title: "Get Current Status",
+        description:
+          "現在の認証状態（認証済み/匿名）と、このセッションで利用可能な操作（永続モード作成/更新可否、import_gist可否、揮発モード強制の有無）を構造化データで返します。create_tool等を呼ぶ前にこのツールで状態を確認すれば、永続モードを提案できるかどうか判断できます",
+        inputSchema: {},
+      },
+      async () => {
+        const status = authContext.getStore()?.status ?? "anonymous";
+        const cap = getAuthCapabilities(status);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(cap, null, 2),
             },
           ],
         };
