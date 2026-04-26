@@ -34,15 +34,26 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 
 ## 認証ステータスによる挙動の違い
 
-このMCPサーバーには3つの認証ステータスがあります:
+このMCPサーバーには3つの認証ステータスがあります（APIキーは \`?key=...\` クエリ または \`x-api-key\` ヘッダで提示）:
 
-| 状態 | 挙動 |
-|---|---|
-| **認証済み**（正しいAPIキー） | 揮発・永続両モード使用可。\`import_gist\` や Gist 更新も可能 |
-| **匿名**（APIキー未提示） | **揮発モード固定**。\`create_tool\` は \`ephemeral\` 設定に関わらず揮発モード。\`update_tool\` は揮発モード（c_で始まるID）のみ更新可。\`import_gist\` は使用不可。読み取り系は引き続き利用可 |
-| **拒否**（APIキー不正） | 全リクエストが 401 で拒否される |
+- **認証済み**: 正しいAPIキー
+- **匿名**: APIキー未提示（または環境変数未設定で検証不能）
+- **拒否**: APIキー不正 → 全リクエストが 401
 
-匿名で永続モード操作を試みると以下のエラーが返ります:
+ツール別の挙動:
+
+| ツール | 認証済み | 匿名 | 拒否 |
+|---|---|---|---|
+| \`how_to_use\` | OK | OK | 401 |
+| \`create_tool\` | 永続/揮発どちらも作成可 | **揮発モード強制**（\`ephemeral\` 指定は無視され常に揮発） | 401 |
+| \`get_tool\` | OK | OK | 401 |
+| \`update_tool\` | 永続/揮発どちらも更新可 | 揮発ID（\`c_\`〜）のみ更新可。永続Gist ID指定時はエラー | 401 |
+| \`import_gist\` | OK | **エラー**（認証必須） | 401 |
+| \`list_recent_tools\` | OK（永続のみ表示） | OK（永続のみ表示） | 401 |
+| \`get_gist_url\` | OK（永続のみ） | OK（永続のみ） | 401 |
+| \`get_qr_code\` | OK | OK | 401 |
+
+匿名で書き込み系を試みた時の代表的なエラー:
 - \`update_tool\` で永続Gist ID指定時: \`永続モード（Gist）の更新には認証が必要です...\`
 - \`import_gist\` 呼び出し時: \`import_gistの実行には認証が必要です...\`
 
@@ -96,6 +107,92 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 - **永続モード（Gist）**: 32文字の16進数（例: \`abc123def456789...\`）
 - **揮発モード（Cache）**: \`c_\` プレフィックス付き（例: \`c_lwxyz123-a1b2c3d4\`）
 - ツールURLの末尾部分がそのままID
+
+### IDから各種URLを組み立てる
+ID と \`trust\` フラグからユーザーに提示するURLを構成できる。\`get_tool\` の返却値に \`url\` / \`rawUrl\` が入っているので、基本はそれを使えば十分（自前で組み立てる必要はない）。
+
+| URL種別 | パターン |
+|---|---|
+| ツール公開URL（\`trust: false\`） | \`<base>/tool/<id>\` |
+| ツール公開URL（\`trust: true\`） | \`<base>/tool-trust/<id>\` |
+| QRコード表示ページ | \`<base>/qr/<id>?size=<100-500>\`（\`get_qr_code\` の \`qrPageUrl\`） |
+| Gist編集ページ（永続のみ） | \`https://gist.github.com/<user>/<id>\`（\`get_gist_url\` の \`gistUrl\`） |
+
+## HTML作成のヒント（CDN活用例）
+
+\`create_tool\` / \`update_tool\` で公開するHTMLは**単一ファイル完結**が原則（外部ファイル参照不可）。CSS/JSはインラインかCDN、画像はBase64またはCDN URLにする。よく使うCDNを以下に挙げる（必要なものだけ取り込む）。
+
+### フレームワーク・スタイリング
+\`\`\`html
+<!-- React 18 + Babel（React 19 はUMDビルド廃止のため18系を使用） -->
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- Tailwind CSS v4 -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+\`\`\`
+
+### アイコン・フォント
+\`\`\`html
+<!-- Lucide Icons（軽量SVGアイコン） -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- Font Awesome 6 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+\`\`\`
+
+### チャート・可視化
+\`\`\`html
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<!-- Mermaid（図・フローチャート） -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+\`\`\`
+
+### ユーティリティ
+\`\`\`html
+<!-- day.js（日付操作） -->
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/locale/ja.js"></script>
+
+<!-- marked（Markdownレンダリング） -->
+<script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+
+<!-- highlight.js（シンタックスハイライト） -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
+<!-- html2canvas（スクリーンショット・画像エクスポート） -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1"></script>
+
+<!-- QRコード生成（クライアント側でQRが必要な場合） -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1/qrcode.js"></script>
+
+<!-- Sortable.js（ドラッグ&ドロップ並び替え） -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1"></script>
+\`\`\`
+
+### アニメーション
+\`\`\`html
+<!-- Animate.css -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+<!-- GSAP -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3"></script>
+\`\`\`
+
+### ブラウザAPIを使う場合の注意
+- カメラ/マイク/localStorage/ServiceWorker などは iframe sandbox に阻まれる
+- それらが必要なツールでは \`trust: true\` + \`confirm_trust: true\` を併記する（ユーザー承認を取った上で）
 
 ## トラブルシューティング
 
