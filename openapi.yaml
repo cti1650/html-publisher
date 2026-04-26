@@ -110,6 +110,7 @@ paths:
               name: "サンプルツール"
               memo: "初回作成"
               trust: false
+              ephemeral: false
       responses:
         "201":
           description: ツールが正常に作成されました
@@ -122,6 +123,7 @@ paths:
                 url: "https://your-domain.com/tool/abc123def456"
                 rawUrl: "https://gist.githubusercontent.com/..."
                 trust: false
+                mode: "gist"
         "400":
           description: リクエストが不正です
           content:
@@ -130,6 +132,68 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "html is required and must be a string"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+
+  /api/qr/{id}:
+    get:
+      summary: ツール公開URLのQRコード画像を取得
+      description: |
+        指定されたIDのツール公開URLをエンコードしたQRコードをPNG画像で返します。
+        画像URLをそのまま `<img src="...">` で埋め込むか、ブラウザで開いて表示できます。
+
+        永続/揮発どちらのIDでも動作します。
+      operationId: getToolQrCode
+      tags:
+        - Tools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ツールのID（永続Gist IDまたは `c_` プレフィックス付き揮発ID）
+          schema:
+            type: string
+          example: "abc123def456"
+        - name: size
+          in: query
+          required: false
+          description: QRコードの一辺ピクセル数（100-500、デフォルト300）
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 500
+            default: 300
+          example: 300
+      responses:
+        "200":
+          description: QRコードPNG画像
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: リクエストが不正です
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "id is required"
+        "404":
+          description: ツールが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Tool not found"
         "500":
           description: サーバーエラー
           content:
@@ -205,6 +269,7 @@ paths:
                 rawUrl: "https://gist.githubusercontent.com/..."
                 url: "https://your-domain.com/tool/abc123def456"
                 trust: false
+                mode: "gist"
         "400":
           description: リクエストが不正です
           content:
@@ -279,6 +344,7 @@ paths:
                 url: "https://your-domain.com/tool-trust/abc123def456"
                 rawUrl: "https://gist.githubusercontent.com/..."
                 trust: true
+                mode: "gist"
         "400":
           description: リクエストが不正です
           content:
