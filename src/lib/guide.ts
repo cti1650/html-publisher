@@ -7,6 +7,7 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 
 | ツール | 用途 |
 |---|---|
+| \`get_status\` | 現在の認証状態と利用可能な操作（永続モード可否など）を取得。**create_tool 等を呼ぶ前に確認推奨** |
 | \`create_tool\` | HTMLを新規作成して公開URLを取得（\`ephemeral: true\` で揮発モード） |
 | \`get_tool\` | IDからHTMLソースを取得（揮発・永続を自動判別） |
 | \`update_tool\` | 既存ツールのHTMLを上書き更新 |
@@ -44,7 +45,8 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 
 | ツール | 認証済み | 匿名 | 拒否 |
 |---|---|---|---|
-| \`how_to_use\` | OK | OK | 401 |
+| \`how_to_use\` | OK（冒頭に現在状態を含む） | OK（冒頭に現在状態を含む） | 401 |
+| \`get_status\` | OK | OK | 401 |
 | \`create_tool\` | 永続/揮発どちらも作成可 | **揮発モード強制**（\`ephemeral\` 指定は無視され常に揮発） | 401 |
 | \`get_tool\` | OK | OK | 401 |
 | \`update_tool\` | 永続/揮発どちらも更新可 | 揮発ID（\`c_\`〜）のみ更新可。永続Gist ID指定時はエラー | 401 |
