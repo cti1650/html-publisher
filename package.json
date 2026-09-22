@@ -14,7 +14,7 @@
     "@upstash/redis": "^1.37.0",
     "js-yaml": "^4.1.1",
     "mcp-handler": "^1.0.7",
-    "next": "16.1.6",
+    "next": "16.3.5",
     "prettier": "^3.8.1",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
@@ -30,7 +30,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
