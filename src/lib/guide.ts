@@ -8,6 +8,7 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 | ツール | 用途 |
 |---|---|
 | \`get_status\` | 現在の認証状態と利用可能な操作（永続モード可否など）を取得。**create_tool 等を呼ぶ前に確認推奨** |
+| \`security_check\` | 公開予定のHTMLを静的解析し、要求機能・外部依存・リスクを可視化。**create_tool / update_tool の前に実行推奨** |
 | \`create_tool\` | HTMLを新規作成して公開URLを取得（\`ephemeral: true\` で揮発モード） |
 | \`get_tool\` | IDからHTMLソースを取得（揮発・永続を自動判別） |
 | \`update_tool\` | 既存ツールのHTMLを上書き更新 |
@@ -47,6 +48,7 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 |---|---|---|---|
 | \`how_to_use\` | OK（冒頭に現在状態を含む） | OK（冒頭に現在状態を含む） | 401 |
 | \`get_status\` | OK | OK | 401 |
+| \`security_check\` | OK | OK | 401 |
 | \`create_tool\` | 永続/揮発どちらも作成可 | **揮発モード強制**（\`ephemeral\` 指定は無視され常に揮発） | 401 |
 | \`get_tool\` | OK | OK | 401 |
 | \`update_tool\` | 永続/揮発どちらも更新可 | 揮発ID（\`c_\`〜）のみ更新可。永続Gist ID指定時はエラー | 401 |
@@ -63,15 +65,18 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 
 ### 1. 新規HTML作成 → 公開
 1. HTMLを生成する前に、ユーザーに「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「揮発か永続か」を説明し確認を取る
-2. \`create_tool\` を実行（必要なら \`ephemeral: true\` を付与）
-3. 返却された \`url\` と \`id\` をユーザーに提示
-4. QR共有が必要な場合は \`get_qr_code\` を呼ぶ
+2. \`security_check\` にHTMLを渡し、\`risk\` / \`findings\` / \`capabilities\` / \`externalDomains\` を確認する
+3. HIGH / MEDIUM の findings があればユーザーに内容を説明し、必要ならHTMLを修正して再度 \`security_check\` を実行
+4. \`create_tool\` を実行（必要なら \`ephemeral: true\` を付与）
+5. 返却された \`url\` と \`id\` をユーザーに提示
+6. QR共有が必要な場合は \`get_qr_code\` を呼ぶ
 
 ### 2. 既存HTMLの修正
 1. 修正対象のIDをユーザーから受け取る（URLの末尾部分、\`c_\` プレフィックス有無で揮発/永続を識別）
 2. 必要に応じて \`get_tool\` で現状のHTMLを確認
 3. ユーザーに「どのような変更を行うか」を説明し確認を取る
-4. \`update_tool\` で上書き更新（揮発・永続の判別はIDから自動）
+4. 更新後のHTMLを \`security_check\` にかけ、HIGH / MEDIUM があればユーザーに説明する
+5. \`update_tool\` で上書き更新（揮発・永続の判別はIDから自動）
 
 ### 3. メタデータのみ変更（永続モードのみ）
 - HTMLは変更せず name/memo/trust だけ変えたい場合は \`import_gist\` を使う（\`update_tool\` ではない）
@@ -93,12 +98,27 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 - 揮発モードは作成時のURL/IDを失うと取り戻せない（一覧に出ない）ため、ユーザーに必ず保存を促す
 
 ### trustモード（信頼モード）の使い分け
-- **デフォルト（trust: false）**: iframe sandboxで隔離実行。安全。基本これでOK
-- **trust: true**: iframe sandboxを無効化、HTMLがページ内で直接実行される
-  - localStorage / sessionStorage が使いたい時
-  - PWAでcamera / microphone を使いたい時
+- **デフォルト（trust: false）**: \`/tool/<id>\` の iframe（\`sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"\`）内で実行される。基本はこれでOK
+- **trust: true**: \`/tool-trust/<id>\` でページ内に直接描画される
   - **必ず \`confirm_trust: true\` を併せて指定**（指定しないとエラーになる）
   - ユーザーへの事前説明と承認が必須
+
+**trust を付ける前に知っておくこと:**
+- localStorage / sessionStorage / camera / microphone / 位置情報 / クリップボードは、\`allow-same-origin\` と iframe の \`allow\` 属性により **trust: false のままでも動作する**。これらを使いたいという理由だけで trust を付ける必要はない
+- trustモードは innerHTML 経由で描画されるため、**\`<script>\` タグは実行されない**（on*属性 / javascript: URI は実行される）。scriptタグに依存するHTMLは trust: false のほうが確実に動く
+- 現状の設定で trust が必要になるのは「埋め込み元ページ自体の遷移」と「ファイルのダウンロード」（\`allow-top-navigation\` / \`allow-downloads\` が未指定のため）
+- \`security_check\` の \`recommendation.trustRequired\` がこの判定を返す。これは**互換性の判定であってセキュリティ上の推奨ではない**
+- なお、どちらのモードでも公開HTMLは HTML Publisher と同一オリジンで実行される。trust: false は「完全に隔離されている」という意味ではない
+
+### security_check の読み方
+- \`risk\`: \`high\` / \`medium\` / \`low\`。findings の最大severityから決まる
+- \`findings[].severity\`: 「分類」ではなく「リスクの受け手 / データが外へ出るか」で決まる
+  - **HIGH**: 公開した時点で被害が確定するもの（秘密情報の露出、同一オリジンAPIの利用、親フレームへのアクセス、資格情報の外部送信）
+  - **MEDIUM**: 内容次第で被害になりうるもの（外部通信、動的コード実行、リダイレクト、Service Worker）
+  - **INFO**: 機能を使っているだけのもの（storage / camera / CDN取得）。**危険として説明しないこと**
+- \`capabilities\`: そのHTMLが要求している機能。危険度ではなく「何を使うか」を中立に表す
+- \`limitations\`: この解析で検出できない範囲。**検出0件でも安全の保証にはならない**
+- このツールは公開をブロックしない（advisory）。最終的な公開判断はユーザーが行う
 
 ### nameとmemoの使い方
 - **name**: ツールの名前。PWAホーム画面表示やSlack通知で使われる
@@ -193,8 +213,9 @@ ID と \`trust\` フラグからユーザーに提示するURLを構成できる
 \`\`\`
 
 ### ブラウザAPIを使う場合の注意
-- カメラ/マイク/localStorage/ServiceWorker などは iframe sandbox に阻まれる
-- それらが必要なツールでは \`trust: true\` + \`confirm_trust: true\` を併記する（ユーザー承認を取った上で）
+- カメラ / マイク / 位置情報 / クリップボード / localStorage / ServiceWorker は、\`trust: false\`（\`/tool/<id>\`）のままでも利用できる
+- \`trust: true\` が必要になるのは「埋め込み元ページ自体の遷移」「ファイルのダウンロード」のみ。迷ったら \`security_check\` の \`recommendation.trustRequired\` を確認する
+- trustモードでは \`<script>\` タグが実行されない点に注意（上記「trustモードの使い分け」を参照）
 
 ## トラブルシューティング
 
@@ -203,6 +224,8 @@ ID と \`trust\` フラグからユーザーに提示するURLを構成できる
   - 揮発モード: TTLが切れて削除された、またはIDが間違っている
 - **Unauthorized エラー**: APIキーが必要。クライアント設定の \`?key=...\` を確認
 - **trust指定でエラー**: \`confirm_trust: true\` を併記する
+- **trustモードでJavaScriptが動かない**: trustモードは innerHTML 経由で描画されるため \`<script>\` タグが実行されない。\`trust: false\` に戻すか、on*属性での初期化に書き換える
+- **\`security_check\` でHIGHが出た**: 公開はブロックされない。内容をユーザーに説明し、修正するか意図的なものとして進めるかを確認する
 - **揮発モードのツールに \`import_gist\` / \`get_gist_url\` を使った場合**: 揮発モードはGistと無関係なのでエラーになる（仕様）
 
 ## ユーザー確認のタイミング

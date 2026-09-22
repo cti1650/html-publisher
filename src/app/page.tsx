@@ -244,6 +244,7 @@ export default function Home() {
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-4">
             提供ツール: <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-xs">how_to_use</code>{" "}
             <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-xs">get_status</code>{" "}
+            <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-xs">security_check</code>{" "}
             <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-xs">create_tool</code>{" "}
             <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-xs">get_tool</code>{" "}
             <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded text-xs">update_tool</code>{" "}
