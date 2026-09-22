@@ -105,7 +105,7 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 
 **trust を付ける前に知っておくこと:**
 - localStorage / sessionStorage / camera / microphone / 位置情報 / クリップボードは、\`allow-same-origin\` と iframe の \`allow\` 属性により **trust: false のままでも動作する**。これらを使いたいという理由だけで trust を付ける必要はない
-- trustモードは innerHTML 経由で描画されるため、**\`<script>\` タグは実行されない**（on*属性 / javascript: URI は実行される）。scriptタグに依存するHTMLは trust: false のほうが確実に動く
+- trustモードは iframe を経由せずページ本体としてHTMLが描画されるため、**sandbox属性による制限が一切かからない**。通常モードでできることはすべてでき、加えて埋め込み元ページのDOMも直接操作できる
 - 現状の設定で trust が必要になるのは「埋め込み元ページ自体の遷移」と「ファイルのダウンロード」（\`allow-top-navigation\` / \`allow-downloads\` が未指定のため）
 - \`security_check\` の \`recommendation.trustRequired\` がこの判定を返す。これは**互換性の判定であってセキュリティ上の推奨ではない**
 - なお、どちらのモードでも公開HTMLは HTML Publisher と同一オリジンで実行される。trust: false は「完全に隔離されている」という意味ではない
@@ -215,7 +215,7 @@ ID と \`trust\` フラグからユーザーに提示するURLを構成できる
 ### ブラウザAPIを使う場合の注意
 - カメラ / マイク / 位置情報 / クリップボード / localStorage / ServiceWorker は、\`trust: false\`（\`/tool/<id>\`）のままでも利用できる
 - \`trust: true\` が必要になるのは「埋め込み元ページ自体の遷移」「ファイルのダウンロード」のみ。迷ったら \`security_check\` の \`recommendation.trustRequired\` を確認する
-- trustモードでは \`<script>\` タグが実行されない点に注意（上記「trustモードの使い分け」を参照）
+- trustモードは sandbox の制限が一切かからないため、必要な機能が通常モードで足りているかを先に確認する（上記「trustモードの使い分け」を参照）
 
 ## トラブルシューティング
 
@@ -224,7 +224,6 @@ ID と \`trust\` フラグからユーザーに提示するURLを構成できる
   - 揮発モード: TTLが切れて削除された、またはIDが間違っている
 - **Unauthorized エラー**: APIキーが必要。クライアント設定の \`?key=...\` を確認
 - **trust指定でエラー**: \`confirm_trust: true\` を併記する
-- **trustモードでJavaScriptが動かない**: trustモードは innerHTML 経由で描画されるため \`<script>\` タグが実行されない。\`trust: false\` に戻すか、on*属性での初期化に書き換える
 - **\`security_check\` でHIGHが出た**: 公開はブロックされない。内容をユーザーに説明し、修正するか意図的なものとして進めるかを確認する
 - **揮発モードのツールに \`import_gist\` / \`get_gist_url\` を使った場合**: 揮発モードはGistと無関係なのでエラーになる（仕様）
 

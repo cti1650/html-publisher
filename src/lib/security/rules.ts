@@ -300,7 +300,7 @@ function codeFindings(ctx: ScanContext, signals: Signals): SecurityFinding[] {
       severity: "medium",
       audience: ["viewer"],
       message:
-        "javascript: URI が含まれています。trustモード（/tool-trust/）では innerHTML 経由で描画されるため script タグは実行されませんが、javascript: URI は実行されます",
+        "javascript: URI が含まれています。リンク先やsrcが動的に組み立てられている場合、意図しないコードが実行される経路になります",
       evidence: evidenceOf("javascriptUri"),
       count: signals.javascriptUri,
     });
@@ -312,7 +312,7 @@ function codeFindings(ctx: ScanContext, signals: Signals): SecurityFinding[] {
       severity: "medium",
       audience: ["viewer"],
       message:
-        "インラインイベントハンドラ（on*属性）が含まれています。trustモードでは script タグが実行されない一方で on*属性は実行されるため、trustモードでの主要な実行経路になります",
+        "インラインイベントハンドラ（on*属性）が含まれています。属性値に外部入力が混ざるとそのままコードとして実行されるため、値の組み立て方を確認してください",
       evidence: evidenceOf("inlineEventHandler"),
       count: signals.inlineEventHandler,
     });
