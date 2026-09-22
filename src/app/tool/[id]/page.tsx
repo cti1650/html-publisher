@@ -85,7 +85,13 @@ export default async function ToolViewerPage({ params }: PageProps) {
       <main className="w-full h-dvh">
         <iframe
           srcDoc={html}
-          sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"
+          // allow-same-origin は付けない。srcDoc の iframe は親のオリジンを継承するため、
+          // allow-scripts と併用すると iframe が publisher と同一オリジンになり、
+          // storage / Cookie / 同一オリジンAPI / 親フレームのDOM に到達できてしまう
+          // （sandbox属性を自分で外して再読込することも可能になる）。
+          // opaque origin にすることで初めて隔離が成立する。
+          // この設定を変更する場合は src/lib/security/capability.ts の RUNTIME_MATRIX も更新すること。
+          sandbox="allow-scripts allow-forms allow-modals allow-popups"
           allow="geolocation; accelerometer; gyroscope; magnetometer; camera; microphone; fullscreen; clipboard-read; clipboard-write; web-share"
           className="w-full h-full border-0"
           title="HTML Tool"

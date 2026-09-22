@@ -120,7 +120,7 @@ function urlFindings(refs: UrlRef[], signals: Signals): SecurityFinding[] {
       severity: "high",
       audience: ["service", "publisher"],
       message:
-        "HTML Publisher自身のAPI（/api/配下）へのリクエストが含まれています。公開HTMLは publisher と同一オリジンで実行されるため、他のツールの取得・作成・更新が可能です",
+        "HTML Publisher自身のAPI（/api/配下）へのリクエストが含まれています。非trustモードでは opaque origin のためクロスオリジン扱いとなり応答を読めませんが、trustモードで公開した場合は他のツールの取得・作成・更新が可能になります",
       target: uniqueTargets(selfApi).join(", "),
       count: selfApi.length,
     });
@@ -136,7 +136,7 @@ function urlFindings(refs: UrlRef[], signals: Signals): SecurityFinding[] {
       severity: "medium",
       audience: ["service"],
       message:
-        "相対URL（同一オリジン）へのリクエストが含まれています。公開HTMLは単一ファイル完結が前提のため、同一オリジンのパスを参照する意図を確認してください",
+        "相対URLへのリクエストが含まれています。公開HTMLは単一ファイル完結が前提で、非trustモードでは opaque origin のため同一オリジン扱いにならず失敗します。参照している意図を確認してください",
       target: uniqueTargets(selfOther).join(", "),
       count: selfOther.length,
     });
@@ -228,7 +228,7 @@ function codeFindings(ctx: ScanContext, signals: Signals): SecurityFinding[] {
       severity: "high",
       audience: ["service"],
       message:
-        "親フレーム（parent / top / frameElement）へのアクセスが含まれています。公開HTMLは publisher と同一オリジンで実行されるため、埋め込み元ページのDOM操作やsandbox属性の除去が可能です",
+        "親フレーム（parent / top / frameElement）へのアクセスが含まれています。非trustモードでは opaque origin のためブロックされますが、sandboxの外に出ようとするコードは意図を確認してください。trustモードではiframeを経由しないため制限なく成立します",
       evidence: evidenceOf("frameAccess"),
       count: signals.frameAccess,
     });
@@ -240,7 +240,7 @@ function codeFindings(ctx: ScanContext, signals: Signals): SecurityFinding[] {
       severity: "high",
       audience: ["service", "publisher"],
       message:
-        "document.cookie へのアクセスが含まれています。公開HTMLは publisher と同一オリジンで実行されるため、publisherオリジンのCookieを読み書きできます",
+        "document.cookie へのアクセスが含まれています。非trustモードでは opaque origin のため読み書きできませんが、trustモードで公開した場合は publisherオリジンのCookieに到達します",
       evidence: evidenceOf("cookieAccess"),
       count: signals.cookieAccess,
     });
@@ -264,7 +264,7 @@ function codeFindings(ctx: ScanContext, signals: Signals): SecurityFinding[] {
       severity: "medium",
       audience: ["service", "viewer"],
       message:
-        "Service Worker の登録が含まれています。publisherオリジンで動作するため、登録されたSWはページを離れても該当スコープのリクエストに介入し続けます",
+        "Service Worker の登録が含まれています。非trustモードでは opaque origin のため登録できません。trustモードで公開した場合は publisherオリジンに登録され、ページを離れても該当スコープのリクエストに介入し続けます",
       evidence: evidenceOf("serviceWorker"),
       count: signals.serviceWorker,
     });
@@ -347,7 +347,7 @@ function codeFindings(ctx: ScanContext, signals: Signals): SecurityFinding[] {
       id: "storage-usage",
       severity: "info",
       audience: ["viewer"],
-      message: `Storage API を利用しています（${signals.storage.join(" / ")}）。公開HTMLは publisherオリジンで動作するため、保存領域は他のツールと共有されます`,
+      message: `Storage API を利用しています（${signals.storage.join(" / ")}）。非trustモードでは opaque origin のため利用できません。trustモードで公開する場合、保存領域は publisherオリジンの他のツールと共有されます`,
       count: signals.storage.length,
     });
   }
@@ -363,7 +363,7 @@ function codeFindings(ctx: ScanContext, signals: Signals): SecurityFinding[] {
       id: "device-access",
       severity: "info",
       audience: ["viewer"],
-      message: `デバイス機能の利用を検出しました（${kinds.join(" / ")}）。利用にあたってはブラウザの許可ダイアログが表示されます`,
+      message: `デバイス機能の利用を検出しました（${kinds.join(" / ")}）。非trustモードでは opaque origin のため権限が下りないため、利用するには trust: true が必要です`,
       count: signals.mediaDevices + signals.geolocation,
     });
   }
