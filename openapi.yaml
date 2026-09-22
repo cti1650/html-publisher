@@ -518,7 +518,7 @@ tags:
 
       **信頼モード（trust）:**
       - `trust: true` で作成すると `/tool-trust/{id}` のURLが発行され、iframeを使わず直接描画される
-        （innerHTML経由のため `<script>` タグは実行されない点に注意）
+        （sandbox属性による制限が一切かからない点に注意）
       - `trust: false` または未指定の場合は `/tool/{id}` のURLが発行され、iframe内で実行される
       - localStorage / camera / microphone / 位置情報 / クリップボードは通常モードでも利用可能
       - MCP経由では `security_check` ツールで公開前にHTMLの要求機能・外部依存を確認できる
