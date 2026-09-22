@@ -11,7 +11,8 @@ ChatGPTなどで生成した単一HTMLファイルをAPI経由で公開し、URL
 - HTMLファイルをAPI経由で登録
 - GitHub Gistに保存（永続モード）または Upstash Redis にキャッシュ保存（揮発モード）
 - 公開URLを発行
-- iframe sandboxで安全に実行
+- iframe内で実行（sandbox属性 + Permissions Policy）
+- 公開前の静的解析（`security_check`）でリスク・要求機能・外部依存を可視化
 
 ## ストレージモード
 
@@ -115,7 +116,7 @@ Request:
   "html": "<!DOCTYPE html><html><body><h1>Hello</h1></body></html>",
   "name": "コンパスアプリ",  // 任意: ツール名
   "memo": "初回作成",  // 任意: 変更メモ
-  "trust": false,  // 任意: 信頼モード（trueでlocalStorage等を許可）
+  "trust": false,  // 任意: 信頼モード（trueでiframeを使わず直接描画）
   "ephemeral": false  // 任意: 揮発モード（trueでキャッシュ保存・6時間TTL）
 }
 
@@ -135,7 +136,7 @@ Response (201):
 - HTML内に`<meta name="tool-memo" content="初回作成">`を挿入
 - HTML内に`<meta name="tool-trust" content="true">`を挿入（trueの場合）
 - Slack通知にツール名、メモ、信頼モードを表示
-- `trust: true`の場合、URLが`/tool-trust/{id}`になり、localStorage等が使用可能
+- `trust: true`の場合、URLが`/tool-trust/{id}`になり、iframeを使わず直接描画される
 
 ### ツール取得
 
@@ -250,6 +251,8 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | ツール名 | 説明 |
 |---------|------|
 | `how_to_use` | HTML Publisherの使い方ガイドを取得（推奨ワークフロー、各ツールの使い分け、trustフラグの判断基準など） |
+| `get_status` | 現在の認証状態と、このセッションで利用可能な操作を取得 |
+| `security_check` | 公開予定のHTMLを静的解析し、要求機能・外部依存・リスクを可視化（advisory / 公開はブロックしない） |
 | `create_tool` | HTMLを新規作成し公開URLを取得（`ephemeral: true` で揮発モード） |
 | `get_tool` | IDからHTMLソースを取得（揮発・永続を自動判別） |
 | `update_tool` | 既存ツールのHTMLを上書き更新（htmlパラメータ必須） |
@@ -259,6 +262,48 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `get_qr_code` | ツール共有用QRコードのURLを取得 |
 
 スキルプラグインを導入していないクライアントでも、`how_to_use` を最初に呼び出すことで推奨ワークフローを把握できます。
+
+### 公開前チェック（security_check）
+
+`security_check` は公開予定のHTMLを静的解析し、「このHTMLは何を要求し、どこと通信するのか」を公開前に可視化します。脆弱性の完全判定を目的とするものではありません。
+
+```
+HTML生成 → security_check → HIGH/MEDIUMをユーザーへ説明 → 必要なら修正 → create_tool → 公開
+```
+
+入力は `html` のみ。出力は以下の形式です。
+
+```json
+{
+  "risk": "high",
+  "summary": { "high": 1, "medium": 2, "info": 1 },
+  "findings": [
+    {
+      "id": "same-origin-api-request",
+      "severity": "high",
+      "audience": ["service", "publisher"],
+      "message": "HTML Publisher自身のAPI（/api/配下）へのリクエストが含まれています...",
+      "target": "/api/tools",
+      "count": 1
+    }
+  ],
+  "capabilities": { "network": true, "storage": ["localStorage"], "camera": false },
+  "externalDomains": ["cdn.jsdelivr.net"],
+  "recommendation": { "trustRequired": false, "reasons": [] },
+  "limitations": ["文字列連結・間接呼び出し・難読化されたコードは検出できません", "..."],
+  "disclaimer": "この結果は公開前の可視化であり、安全性の保証ではありません。..."
+}
+```
+
+- **severity は分類ではなく「リスクの受け手 / データが外へ出るか」で決まります**
+  - `high`: 公開時点で被害が確定するもの（秘密情報の露出、同一オリジンAPIの利用、親フレームへのアクセス、資格情報の外部送信）
+  - `medium`: 内容次第で被害になりうるもの（外部通信、動的コード実行、リダイレクト、Service Worker）
+  - `info`: 機能を使っているだけのもの（storage / camera / CDN取得）。危険として扱いません
+- **advisory方式**です。`create_tool` / `update_tool` の挙動は一切変更していません
+- `recommendation.trustRequired` は**互換性の判定**であり、セキュリティ上の推奨ではありません。`trust: true` の付与には従来どおりユーザー確認が必要です
+- `limitations` に検出できない範囲を明記しています。**検出0件は安全の保証ではありません**
+
+解析エンジンは `src/lib/security/scanHtml()` に隠蔽されているため、将来 Semgrep / Gitleaks 等へ差し替えてもMCPの入出力は変わりません。
 
 ### 信頼モード（trust）の安全機構
 
@@ -369,9 +414,9 @@ APIキー無しで接続した場合は、自動的に揮発モード（cache）
 
 ### 通常モード: `/tool/:id`
 
-HTMLがiframe sandbox内で表示されます。
+HTMLがiframe内で表示されます。
 
-**セキュリティ設定:**
+**実行環境:**
 - `sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"`
 - 以下のPermissions Policyを許可:
   - `geolocation` - 位置情報
@@ -380,7 +425,11 @@ HTMLがiframe sandbox内で表示されます。
   - `fullscreen` - フルスクリーン
   - `clipboard-read`, `clipboard-write` - クリップボード
   - `web-share` - Web Share API
-- top navigation、cookie access は禁止
+- 埋め込み元ページ自体の遷移（top navigation）とファイルダウンロードは禁止（`allow-top-navigation` / `allow-downloads` が未指定のため）
+
+> **注意:** `srcdoc` のiframeは親のオリジンを継承するため、`allow-same-origin` により公開HTMLは HTML Publisher と**同一オリジンで動作します**。`localStorage` / `sessionStorage` / Cookie / 同一オリジンへのリクエストは通常モードでも利用可能で、オリジンレベルでの隔離にはなっていません。自分が登録したHTMLのみを公開する運用を前提としてください。
+>
+> この対応関係は `src/lib/security/capability.ts` の `RUNTIME_MATRIX` にまとめており、`security_check` の `recommendation.trustRequired` はこの表から導出されます。iframe の属性を変更した場合は表も併せて更新してください。
 
 ### 信頼モード: `/tool-trust/:id`
 
@@ -388,10 +437,12 @@ HTMLがiframe sandbox内で表示されます。
 
 **iframeを使用せず、HTMLを直接レンダリングします。** これにより以下が可能になります：
 
-- `localStorage` / `sessionStorage` - データ永続化
-- `camera` / `microphone` - PWAモードでも動作
 - ファイルダウンロード
-- すべてのブラウザAPI
+- 埋め込み元ページ自体の遷移（top navigation）
+
+> **注意:** `localStorage` / `camera` / `microphone` / 位置情報 / クリップボードは通常モード（`/tool/:id`）でも利用できます。これらを使うためだけに信頼モードを有効化する必要はありません。
+>
+> また信頼モードは `innerHTML` 経由で描画されるため、**`<script>` タグは実行されません**（`on*` 属性 / `javascript:` URI は実行されます）。scriptタグに依存するHTMLは通常モードのほうが確実に動作します。
 
 **警告:** 信頼モードはHTMLがページ内で直接実行されるため、**完全に自己責任**です。セルフホスト環境で自分が登録したHTMLのみを信頼モードで使用してください。
 `trust`フラグが設定されていないツールは`/tool-trust/`でアクセスしても404になります。

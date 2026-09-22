@@ -6,6 +6,7 @@ import { isCacheId } from "@/lib/cache";
 import { checkAuth, authContext, getAuthCapabilities, type AuthCapabilities } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
 import { HOW_TO_USE_GUIDE } from "@/lib/guide";
+import { scanHtml } from "@/lib/security";
 
 function renderStatusBlock(cap: AuthCapabilities): string {
   const yes = "可";
@@ -85,6 +86,31 @@ const handler = createMcpHandler(
             {
               type: "text",
               text: JSON.stringify(cap, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    // 公開前HTML静的解析（advisory / 公開はブロックしない）
+    server.registerTool(
+      "security_check",
+      {
+        title: "Security Check",
+        description:
+          "【create_tool / update_tool の前に実行を推奨】公開予定のHTMLを静的解析し、そのHTMLが「何を要求し、どこと通信するのか」を可視化します。返却値の risk / findings / capabilities / externalDomains を確認し、HIGH・MEDIUMがあればユーザーに内容を説明してください。このツールは公開をブロックしません（advisory）。また脆弱性の完全判定を行うものではなく、検出0件でも安全の保証にはなりません（limitations に検出できない範囲を明記しています）",
+        inputSchema: {
+          html: z.string().min(1).describe("解析するHTMLコンテンツ（create_tool に渡す予定のもの）"),
+        },
+      },
+      async ({ html }) => {
+        const report = scanHtml(html, { selfOrigin: getBaseUrl() });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(report, null, 2),
             },
           ],
         };
