@@ -22,16 +22,17 @@ import { isNetworkSink, isSelfApiRequest } from "./external-resources";
  * 非trustモード（/tool/<id>）の実行環境で各capabilityが動作するかの対応表。
  *
  * 出典: src/app/tool/[id]/page.tsx
- *   sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"
+ *   sandbox="allow-scripts allow-forms allow-modals allow-popups"
  *   allow="geolocation; accelerometer; gyroscope; magnetometer; camera; microphone;
  *          fullscreen; clipboard-read; clipboard-write; web-share"
  *
  * trustRequired はこの表からのみ導出する（機能名のハードコードで判定しない）。
  * 表を更新したら、対応するページ側の属性も必ず合わせること。
  *
- * 注意: srcDoc の iframe は親のオリジンを継承するため、allow-same-origin により
- * publisher オリジンと同一オリジンで動作する。storage / cookie / 同一オリジン通信は
- * 非trustモードでも「動いてしまう」。これは隔離されている状態ではない。
+ * 前提: allow-same-origin を指定していないため、iframe は opaque origin になる。
+ * allow 属性による権限委譲は opaque origin には及ばないため、
+ * allow に列挙されていても camera / microphone / geolocation / clipboard は動作しない。
+ * これらを使うツールは trust: true が必要になる（= trustRequired の主な発生源）。
  */
 export const RUNTIME_MATRIX: Record<
   keyof Capabilities,
@@ -39,25 +40,39 @@ export const RUNTIME_MATRIX: Record<
 > = {
   network: { availableWithoutTrust: true, basis: "sandbox属性はネットワーク自体を制限しない" },
   sameOriginRequest: {
-    availableWithoutTrust: true,
-    basis: "allow-same-origin により publisher オリジンと同一オリジン",
+    availableWithoutTrust: false,
+    basis:
+      "opaque origin のため publisher オリジンへのリクエストはクロスオリジン扱いになり、CORS未設定の応答は読み取れない",
   },
-  storage: { availableWithoutTrust: true, basis: "allow-same-origin によりStorage APIが利用可能" },
-  camera: { availableWithoutTrust: true, basis: "allow 属性に camera を含む" },
-  microphone: { availableWithoutTrust: true, basis: "allow 属性に microphone を含む" },
-  geolocation: { availableWithoutTrust: true, basis: "allow 属性に geolocation を含む" },
+  storage: {
+    availableWithoutTrust: false,
+    basis: "opaque origin では localStorage / sessionStorage / indexedDB へのアクセスが例外になる",
+  },
+  camera: {
+    availableWithoutTrust: false,
+    basis: "allow 属性に camera を含むが、opaque origin には権限が委譲されない",
+  },
+  microphone: {
+    availableWithoutTrust: false,
+    basis: "allow 属性に microphone を含むが、opaque origin には権限が委譲されない",
+  },
+  geolocation: {
+    availableWithoutTrust: false,
+    basis: "allow 属性に geolocation を含むが、opaque origin には権限が委譲されない",
+  },
   clipboard: {
-    availableWithoutTrust: true,
-    basis: "allow 属性に clipboard-read / clipboard-write を含む",
+    availableWithoutTrust: false,
+    basis:
+      "allow 属性に clipboard-read / clipboard-write を含むが、opaque origin には権限が委譲されない（document.execCommand('copy') は動作する場合がある）",
   },
   serviceWorker: {
-    availableWithoutTrust: true,
-    basis: "allow-same-origin により登録自体は可能（スクリプトは同一オリジン配置が必要）",
+    availableWithoutTrust: false,
+    basis: "opaque origin では Service Worker を登録できない",
   },
   dynamicCode: { availableWithoutTrust: true, basis: "allow-scripts によりスクリプト実行が可能" },
   frameAccess: {
-    availableWithoutTrust: true,
-    basis: "allow-same-origin により親フレームへアクセス可能",
+    availableWithoutTrust: false,
+    basis: "opaque origin のため親フレームとはクロスオリジンになり、DOMへアクセスできない",
   },
   topLevelNavigation: {
     availableWithoutTrust: false,

@@ -400,8 +400,9 @@ components:
           description: |
             信頼モード（任意）。trueの場合はiframeを使わず直接描画する信頼済みURLを発行します。
             URLは `/tool-trust/{id}` になります。
-            localStorage / camera / microphone 等は通常モードでも利用できるため、
-            これらを使う目的だけで有効化する必要はありません。
+            通常モードのiframeは opaque origin のため、localStorage / camera / microphone /
+            位置情報 / クリップボード / Service Worker を使うツールは信頼モードが必要です。
+            信頼モードはsandboxの制限が一切かからない点に注意してください。
         ephemeral:
           type: boolean
           description: |
@@ -520,7 +521,8 @@ tags:
       - `trust: true` で作成すると `/tool-trust/{id}` のURLが発行され、iframeを使わず直接描画される
         （sandbox属性による制限が一切かからない点に注意）
       - `trust: false` または未指定の場合は `/tool/{id}` のURLが発行され、iframe内で実行される
-      - localStorage / camera / microphone / 位置情報 / クリップボードは通常モードでも利用可能
+      - localStorage / camera / microphone / 位置情報 / クリップボード / Service Worker は
+        通常モードでは利用できない（opaque origin のため）。これらが必要な場合のみ信頼モードを使う
       - MCP経由では `security_check` ツールで公開前にHTMLの要求機能・外部依存を確認できる
   - name: Documentation
     description: APIドキュメント

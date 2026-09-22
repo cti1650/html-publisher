@@ -417,32 +417,31 @@ APIキー無しで接続した場合は、自動的に揮発モード（cache）
 HTMLがiframe内で表示されます。
 
 **実行環境:**
-- `sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-popups"`
-- 以下のPermissions Policyを許可:
-  - `geolocation` - 位置情報
-  - `accelerometer`, `gyroscope`, `magnetometer` - センサー
-  - `camera`, `microphone` - カメラ・マイク
-  - `fullscreen` - フルスクリーン
-  - `clipboard-read`, `clipboard-write` - クリップボード
-  - `web-share` - Web Share API
-- 埋め込み元ページ自体の遷移（top navigation）とファイルダウンロードは禁止（`allow-top-navigation` / `allow-downloads` が未指定のため）
+- `sandbox="allow-scripts allow-forms allow-modals allow-popups"`
+- **`allow-same-origin` は指定しません。** `srcdoc` のiframeは親のオリジンを継承するため、これを付けると公開HTMLが HTML Publisher と同一オリジンになり、storage / Cookie / 同一オリジンAPI / 親フレームのDOM に到達できてしまいます（sandbox属性を自分で外して再読込することも可能になります）。opaque origin にすることで初めて隔離が成立します
+- iframe の `allow` 属性には以下を列挙していますが、**opaque origin には権限が委譲されないため、通常モードでは実際には利用できません**（信頼モードが必要）:
+  - `geolocation` / `camera` / `microphone` / `clipboard-read` / `clipboard-write` / `accelerometer` / `gyroscope` / `magnetometer` / `fullscreen` / `web-share`
 
-> **注意:** `srcdoc` のiframeは親のオリジンを継承するため、`allow-same-origin` により公開HTMLは HTML Publisher と**同一オリジンで動作します**。`localStorage` / `sessionStorage` / Cookie / 同一オリジンへのリクエストは通常モードでも利用可能で、オリジンレベルでの隔離にはなっていません。自分が登録したHTMLのみを公開する運用を前提としてください。
->
-> この対応関係は `src/lib/security/capability.ts` の `RUNTIME_MATRIX` にまとめており、`security_check` の `recommendation.trustRequired` はこの表から導出されます。iframe の属性を変更した場合は表も併せて更新してください。
+**通常モードで利用できるもの / できないもの:**
+
+| 機能 | 通常モード |
+|---|---|
+| 外部ドメインへの通信 / CDN読み込み / 動的コード実行 | 可 |
+| localStorage / sessionStorage / indexedDB | 不可（opaque origin のため例外） |
+| camera / microphone / 位置情報 / クリップボード | 不可（権限が委譲されない） |
+| Service Worker の登録 | 不可 |
+| Cookie / 親フレームのDOM / 同一オリジンAPI | 不可 |
+| top navigation / ファイルダウンロード | 不可（`allow-top-navigation` / `allow-downloads` 未指定） |
+
+> この対応関係は `src/lib/security/capability.ts` の `RUNTIME_MATRIX` にまとめており、`security_check` の `recommendation.trustRequired` はこの表から導出されます。**iframe の属性を変更した場合は表も併せて更新してください。**
 
 ### 信頼モード: `/tool-trust/:id`
 
 `trust: true`で作成されたツール専用のエンドポイントです。
 
-**iframeを使用せず、HTMLを直接レンダリングします。** これにより以下が可能になります：
+**iframeを使用せず、HTMLを直接レンダリングします。** これにより上表で「不可」となっている機能がすべて利用可能になります（localStorage、camera、Service Worker、ダウンロード等）。
 
-- ファイルダウンロード
-- 埋め込み元ページ自体の遷移（top navigation）
-
-> **注意:** `localStorage` / `camera` / `microphone` / 位置情報 / クリップボードは通常モード（`/tool/:id`）でも利用できます。これらを使うためだけに信頼モードを有効化する必要はありません。
->
-> 信頼モードは iframe を経由せずページ本体としてHTMLが描画されるため、**sandbox属性による制限が一切かかりません**。通常モードでできることはすべてでき、加えて埋め込み元ページのDOMも直接操作できます。
+> **注意:** 信頼モードは iframe を経由せずページ本体としてHTMLが描画されるため、**sandbox属性による制限が一切かかりません**。埋め込み元ページのDOMやCookieにも到達できます。localStorage を使いたいという理由で信頼モードにする場合も、そのツールが publisherオリジンの全権を得ることを理解した上で判断してください。
 
 **警告:** 信頼モードはHTMLがページ内で直接実行されるため、**完全に自己責任**です。セルフホスト環境で自分が登録したHTMLのみを信頼モードで使用してください。
 `trust`フラグが設定されていないツールは`/tool-trust/`でアクセスしても404になります。
