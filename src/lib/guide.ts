@@ -128,6 +128,7 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
   - **INFO**: 機能を使っているだけのもの（storage / camera / CDN取得）。**危険として説明しないこと**
 - \`capabilities\`: そのHTMLが要求している機能。危険度ではなく「何を使うか」を中立に表す
 - \`limitations\`: この解析で検出できない範囲。**検出0件でも安全の保証にはならない**
+- \`hardcoded-secret\` が出た場合は \`target\` に推定プロバイダが入る。**Firebase Web APIキーや Stripe の publishable key は公開前提**のため MEDIUM で報告される（メッセージの注意書きをユーザーに伝えること）
 - このツールは公開をブロックしない（advisory）。最終的な公開判断はユーザーが行う
 
 ### nameとmemoの使い方
