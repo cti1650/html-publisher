@@ -166,7 +166,7 @@ export function extractUrlRefs(ctx: ScanContext, selfOrigin?: string): UrlRef[] 
   const refs: UrlRef[] = [];
   collectFromAttributes(ctx.html, refs, selfOrigin);
   collectFromCss(ctx.html, refs, selfOrigin);
-  collectFromCode(ctx.code, refs, selfOrigin);
+  collectFromCode(ctx.unparsedCode, refs, selfOrigin);
   return refs;
 }
 

@@ -101,6 +101,14 @@ export interface ScanContext {
   scriptCode: string;
   /** インラインscript + on*属性 + javascript: URI を連結した「JSとして解釈される全文」 */
   code: string;
+  /** JSとして解釈される断片を個別に保持したもの（AST解析の入力） */
+  jsSources: string[];
+  /**
+   * AST解析でパースできなかった断片だけを連結したもの。
+   * パースできた断片は js-ast.ts が担当するため、正規表現はここだけを見る。
+   * これによりコメントや文字列リテラル内のコード片を誤検知しなくなる。
+   */
+  unparsedCode: string;
   /** 解析対象を打ち切った場合に true */
   truncated: boolean;
 }
@@ -130,6 +138,8 @@ export interface Signals {
   javascriptUri: number;
   svgScript: number;
   embeddedFrame: number;
+  /** 宛先を静的に特定できないネットワークリクエストの数 */
+  dynamicNetworkSink: number;
   metaRefresh: number;
   passwordInput: number;
   /** 検出根拠の抜粋（先頭数件のみ） */
