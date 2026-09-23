@@ -303,6 +303,19 @@ HTML生成 → security_check → HIGH/MEDIUMをユーザーへ説明 → 必要
 - `recommendation.trustRequired` は**互換性の判定**であり、セキュリティ上の推奨ではありません。`trust: true` の付与には従来どおりユーザー確認が必要です
 - `limitations` に検出できない範囲を明記しています。**検出0件は安全の保証ではありません**
 
+#### Secret 検出
+
+公開されたら即被害になるため、ここだけ専用の検出器を持っています（`src/lib/security/secrets.ts`）。
+
+- **プロバイダ判定** — OpenAI / Anthropic / GitHub / GitLab / Slack / AWS / Stripe / SendGrid / Google OAuth / npm / Telegram / Twilio / Mailgun / Square / 秘密鍵ブロック等。finding のメッセージに「何のキーらしいか」を含めます
+- **プロバイダを特定できないもの** — 変数名（`apiSecret` など）とシャノンエントロピーの組み合わせで検出。接続文字列・URLに埋め込まれた認証情報・JWT も対象
+- **公開前提のキーは MEDIUM** — Firebase Web APIキー（`AIza`）、Stripe の publishable key（`pk_`）、テストキー（`sk_test_`）。すべてHIGHにすると実用性が落ちるため、注意書き付きで区別します
+- **誤検知の抑制** — Base64画像・フォントの data URI、SRI の `integrity` 属性、ハッシュ値、UUID、カラーコード、`your_` / `example` / `xxxx` 等のプレースホルダ、連番を除外します
+
+検出した値は先頭6文字と桁数だけを出力し、全文は含めません。
+
+Gitleaks の CLI はランタイムでは使っていません。バイナリが 20MB あり1回あたり約220msかかるため、ルール定義（正規表現）だけを参考にして Node 実装で持っています。
+
 #### 解析エンジン
 
 JavaScript は **acorn による AST 解析**で調べます（`src/lib/security/js-ast.ts`）。正規表現だけでは以下を取りこぼすためです。
