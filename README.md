@@ -252,7 +252,7 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 |---------|------|
 | `how_to_use` | HTML Publisherの使い方ガイドを取得（推奨ワークフロー、各ツールの使い分け、trustフラグの判断基準など） |
 | `get_status` | 現在の認証状態と、このセッションで利用可能な操作を取得 |
-| `security_check` | 公開予定のHTMLを静的解析し、要求機能・外部依存・リスクを可視化（advisory / 公開はブロックしない） |
+| `security_check` | 公開予定のHTMLを静的解析し、要求機能・外部依存・リスクを可視化 |
 | `create_tool` | HTMLを新規作成し公開URLを取得（`ephemeral: true` で揮発モード） |
 | `get_tool` | IDからHTMLソースを取得（揮発・永続を自動判別） |
 | `update_tool` | 既存ツールのHTMLを上書き更新（htmlパラメータ必須） |
@@ -299,9 +299,25 @@ HTML生成 → security_check → HIGH/MEDIUMをユーザーへ説明 → 必要
   - `high`: 公開時点で被害が確定するもの（秘密情報の露出、同一オリジンAPIの利用、親フレームへのアクセス、資格情報の外部送信）
   - `medium`: 内容次第で被害になりうるもの（外部通信、動的コード実行、リダイレクト、Service Worker）
   - `info`: 機能を使っているだけのもの（storage / camera / CDN取得）。危険として扱いません
-- **advisory方式**です。`create_tool` / `update_tool` の挙動は一切変更していません
+- `create_tool` / `update_tool` でも**同じ解析が自動で走り、HIGH があると `confirm_security: true` が無い限り失敗します**（後述）
 - `recommendation.trustRequired` は**互換性の判定**であり、セキュリティ上の推奨ではありません。`trust: true` の付与には従来どおりユーザー確認が必要です
 - `limitations` に検出できない範囲を明記しています。**検出0件は安全の保証ではありません**
+
+#### 公開前チェックの強制（confirm_security）
+
+`create_tool` / `update_tool` は内部で同じ解析を実行し、**HIGH が検出された場合のみ** `confirm_security: true` を要求します。`confirm_trust` と同じパターンです。
+
+```
+create_tool（confirm_security なし）
+  ├─ HIGH なし → そのまま公開           ← 既存の呼び出しは変わらず動く
+  └─ HIGH あり → エラー（security.findings を添えて返す）
+                    ↓ 内容をユーザーに説明し承認を得る
+                 confirm_security: true を付けて再実行 → 公開
+```
+
+- **MEDIUM / INFO はブロックしません。** 誤検知で正当なHTMLが公開できなくなる体験を避けるため、止めるのは「公開した時点で被害が確定する」HIGH だけです
+- 成功時もレスポンスに `security`（risk / summary / HIGH・MEDIUM の findings / recommendation）が入ります
+- **REST API（`POST /api/tools` / `PUT /api/tools/{id}`）は従来どおりブロックしません。** 強制が入るのは MCP 経由のみです
 
 #### Secret 検出
 

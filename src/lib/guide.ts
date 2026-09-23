@@ -71,6 +71,8 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 5. 返却された \`url\` と \`id\` をユーザーに提示
 6. QR共有が必要な場合は \`get_qr_code\` を呼ぶ
 
+> \`create_tool\` / \`update_tool\` では**公開前チェックが自動で走る**。HIGHが検出されると \`confirm_security: true\` が無い限り失敗するため、手順2〜3を飛ばしても最終的にユーザー確認が入る。ただしエラーになってから慌てるより、先に \`security_check\` で確認したほうがユーザーへの説明がしやすい。
+
 ### 2. 既存HTMLの修正
 1. 修正対象のIDをユーザーから受け取る（URLの末尾部分、\`c_\` プレフィックス有無で揮発/永続を識別）
 2. 必要に応じて \`get_tool\` で現状のHTMLを確認
@@ -129,7 +131,8 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 - \`capabilities\`: そのHTMLが要求している機能。危険度ではなく「何を使うか」を中立に表す
 - \`limitations\`: この解析で検出できない範囲。**検出0件でも安全の保証にはならない**
 - \`hardcoded-secret\` が出た場合は \`target\` に推定プロバイダが入る。**Firebase Web APIキーや Stripe の publishable key は公開前提**のため MEDIUM で報告される（メッセージの注意書きをユーザーに伝えること）
-- このツールは公開をブロックしない（advisory）。最終的な公開判断はユーザーが行う
+- \`security_check\` 単体は公開をブロックしない。ただし \`create_tool\` / \`update_tool\` 側で同じ解析が走り、**HIGH があると \`confirm_security: true\` が無い限り失敗する**
+- MEDIUM / INFO はブロックしない（誤検知で正当なHTMLが公開できなくなるのを避けるため、止めるのはHIGHだけ）
 
 ### nameとmemoの使い方
 - **name**: ツールの名前。PWAホーム画面表示やSlack通知で使われる
@@ -236,7 +239,10 @@ ID と \`trust\` フラグからユーザーに提示するURLを構成できる
   - 揮発モード: TTLが切れて削除された、またはIDが間違っている
 - **Unauthorized エラー**: APIキーが必要。クライアント設定の \`?key=...\` を確認
 - **trust指定でエラー**: \`confirm_trust: true\` を併記する
-- **\`security_check\` でHIGHが出た**: 公開はブロックされない。内容をユーザーに説明し、修正するか意図的なものとして進めるかを確認する
+- **\`create_tool\` / \`update_tool\` が「公開前チェックで HIGH の検出が…」で失敗する**: レスポンスの \`security.findings\` の内容をユーザーに説明し、
+  - 修正できるなら修正して再実行
+  - 意図的なもの（自分用ツールに自分のキーを埋める等）ならユーザーの承認を得たうえで \`confirm_security: true\` を併記して再実行
+- **\`security_check\` 単体でHIGHが出た**: このツール自体は公開をブロックしない。上記の流れで \`create_tool\` 側が止める
 - **揮発モードのツールに \`import_gist\` / \`get_gist_url\` を使った場合**: 揮発モードはGistと無関係なのでエラーになる（仕様）
 
 ## ユーザー確認のタイミング
