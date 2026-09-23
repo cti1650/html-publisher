@@ -157,7 +157,9 @@ function urlFindings(refs: UrlRef[], signals: Signals): SecurityFinding[] {
 
   // 外部Script（実行コードを外部から取り込む）
   const externalScripts = refs.filter(
-    (ref) => ref.kind === "external" && (ref.origin === "script[src]" || ref.origin === "js[import]")
+    (ref) =>
+      ref.kind === "external" &&
+      (ref.origin === "script[src]" || ref.origin === "js[import]" || ref.origin === "js[script.src]")
   );
   if (externalScripts.length > 0) {
     findings.push({
@@ -174,7 +176,10 @@ function urlFindings(refs: UrlRef[], signals: Signals): SecurityFinding[] {
   // 外部へのフォーム送信
   const externalForms = refs.filter(
     (ref) =>
-      ref.kind === "external" && (ref.origin === "form[action]" || ref.origin.includes("formaction"))
+      ref.kind === "external" &&
+      (ref.origin === "form[action]" ||
+        ref.origin.includes("formaction") ||
+        ref.origin === "js[form.action]")
   );
   if (externalForms.length > 0) {
     const hasCredentialInput = signals.passwordInput > 0;
@@ -255,6 +260,18 @@ function codeFindings(ctx: ScanContext, signals: Signals): SecurityFinding[] {
         "eval / new Function 等の動的コード実行が含まれています。Babel standalone や Tailwind browser 版も内部で使うため、それらのCDNを読み込んでいる場合は正常です。実行する文字列が外部入力由来でないかを確認してください",
       evidence: evidenceOf("dynamicCode"),
       count: signals.dynamicCode,
+    });
+  }
+
+  if (signals.dynamicNetworkSink > 0) {
+    findings.push({
+      id: "dynamic-network-target",
+      severity: "medium",
+      audience: ["viewer", "publisher"],
+      message:
+        "宛先が実行時に決まるネットワークリクエストが含まれています。静的解析では送信先を特定できないため、何がどこへ送られるかをコードで確認してください",
+      evidence: evidenceOf("dynamicNetworkSink"),
+      count: signals.dynamicNetworkSink,
     });
   }
 

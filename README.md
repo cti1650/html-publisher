@@ -290,7 +290,7 @@ HTML生成 → security_check → HIGH/MEDIUMをユーザーへ説明 → 必要
   "capabilities": { "network": true, "storage": ["localStorage"], "camera": false },
   "externalDomains": ["cdn.jsdelivr.net"],
   "recommendation": { "trustRequired": false, "reasons": [] },
-  "limitations": ["文字列連結・間接呼び出し・難読化されたコードは検出できません", "..."],
+  "limitations": ["外部Script（CDN）の中身は取得・解析していません", "..."],
   "disclaimer": "この結果は公開前の可視化であり、安全性の保証ではありません。..."
 }
 ```
@@ -303,7 +303,22 @@ HTML生成 → security_check → HIGH/MEDIUMをユーザーへ説明 → 必要
 - `recommendation.trustRequired` は**互換性の判定**であり、セキュリティ上の推奨ではありません。`trust: true` の付与には従来どおりユーザー確認が必要です
 - `limitations` に検出できない範囲を明記しています。**検出0件は安全の保証ではありません**
 
-解析エンジンは `src/lib/security/scanHtml()` に隠蔽されているため、将来 Semgrep / Gitleaks 等へ差し替えてもMCPの入出力は変わりません。
+#### 解析エンジン
+
+JavaScript は **acorn による AST 解析**で調べます（`src/lib/security/js-ast.ts`）。正規表現だけでは以下を取りこぼすためです。
+
+- 文字列連結・`atob`・`String.fromCharCode` で組み立てた識別子（`window['fe'+'tch']` など）
+- 変数に退避してからの間接アクセス
+- 実行時に組み立てられるURL、動的に生成した `script` / `form` 要素
+- `data:` URI や `srcdoc` に埋め込まれたHTML
+
+逆に、AST を使うことでコメントや文字列リテラル内のコード片を誤検知しなくなります。構文エラーでパースできないスクリプトだけ、従来の正規表現にフォールバックします。
+
+宛先を静的に特定できないリクエストは `dynamic-network-target` として報告します（「通信はするが送信先が不明」を握り潰さないため）。
+
+Semgrep 等の外部エンジンは採用していません。Linux 向け wheel が約 69MB あり Python ランタイムを必要とするため、Vercel の Node ランタイムでは実行できないためです。
+
+解析エンジンは `scanHtml()` に隠蔽されているため、差し替えてもMCPの入出力は変わりません。
 
 ### 信頼モード（trust）の安全機構
 

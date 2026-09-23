@@ -12,6 +12,7 @@ import type {
   StorageKind,
   UrlRef,
 } from "./types";
+import type { AstSignals } from "./js-ast";
 import { isNetworkSink, isSelfApiRequest } from "./external-resources";
 
 // ---------------------------------------------------------------------------
@@ -192,38 +193,60 @@ function countSvgScripts(html: string): number {
   return count;
 }
 
-export function detectSignals(ctx: ScanContext, refs: UrlRef[]): Signals {
-  const evidence: Record<string, string[]> = {};
+/**
+ * シグナルを検出する。
+ *
+ * JS由来のシグナルは2系統から集める:
+ *   - ast: acorn でパースできた断片（js-ast.ts が担当）
+ *   - 正規表現: パースできなかった断片（ctx.unparsedCode）のみ
+ *
+ * 正規表現をパース失敗分に限定することで、コメントや文字列リテラル内の
+ * コード片を誤検知しなくなる。
+ */
+export function detectSignals(ctx: ScanContext, refs: UrlRef[], ast: AstSignals): Signals {
+  const evidence: Record<string, string[]> = { ...ast.evidence };
   const track = (key: string): string[] => (evidence[key] ??= []);
 
-  const storage: StorageKind[] = [];
-  if (countMatches(PATTERNS.localStorage, ctx.code) > 0) storage.push("localStorage");
-  if (countMatches(PATTERNS.sessionStorage, ctx.code) > 0) storage.push("sessionStorage");
-  if (countMatches(PATTERNS.indexedDB, ctx.code) > 0) storage.push("indexedDB");
+  const storage: StorageKind[] = [...ast.storage];
+  const addStorage = (kind: StorageKind) => {
+    if (!storage.includes(kind)) storage.push(kind);
+  };
+  if (countMatches(PATTERNS.localStorage, ctx.unparsedCode) > 0) addStorage("localStorage");
+  if (countMatches(PATTERNS.sessionStorage, ctx.unparsedCode) > 0) addStorage("sessionStorage");
+  if (countMatches(PATTERNS.indexedDB, ctx.unparsedCode) > 0) addStorage("indexedDB");
 
-  const cookieAccess = countMatches(PATTERNS.cookieAccess, ctx.code, track("cookieAccess"));
-  if (cookieAccess > 0) storage.push("cookie");
+  const cookieAccess =
+    ast.cookieAccess + countMatches(PATTERNS.cookieAccess, ctx.unparsedCode, track("cookieAccess"));
+  if (cookieAccess > 0) addStorage("cookie");
 
   const networkRefs = refs.filter(isNetworkSink);
-  const mediaDevices = countMatches(PATTERNS.getUserMedia, ctx.code, track("mediaDevices"));
+  const mediaDevices =
+    ast.mediaDevices + countMatches(PATTERNS.getUserMedia, ctx.unparsedCode, track("mediaDevices"));
 
   return {
     externalNetworkSink: networkRefs.filter((ref) => ref.kind === "external").length,
     sameOriginRequest: networkRefs.filter((ref) => ref.kind === "same-origin").length,
     sameOriginApiRequest: networkRefs.filter(isSelfApiRequest).length,
-    dynamicCode: countMatches(PATTERNS.dynamicCode, ctx.code, track("dynamicCode")),
-    frameAccess: countMatches(PATTERNS.frameAccess, ctx.code, track("frameAccess")),
+    dynamicCode:
+      ast.dynamicCode + countMatches(PATTERNS.dynamicCode, ctx.unparsedCode, track("dynamicCode")),
+    frameAccess:
+      ast.frameAccess + countMatches(PATTERNS.frameAccess, ctx.unparsedCode, track("frameAccess")),
     cookieAccess,
     storage,
-    camera: mediaDevices > 0 && hasTruthyMediaConstraint(ctx.code, "video"),
-    microphone: mediaDevices > 0 && hasTruthyMediaConstraint(ctx.code, "audio"),
+    camera: ast.camera || (mediaDevices > 0 && hasTruthyMediaConstraint(ctx.unparsedCode, "video")),
+    microphone:
+      ast.microphone || (mediaDevices > 0 && hasTruthyMediaConstraint(ctx.unparsedCode, "audio")),
     mediaDevices,
-    geolocation: countMatches(PATTERNS.geolocation, ctx.code, track("geolocation")),
-    clipboard: countMatches(PATTERNS.clipboard, ctx.code, track("clipboard")),
-    serviceWorker: countMatches(PATTERNS.serviceWorker, ctx.code, track("serviceWorker")),
-    redirect: countMatches(PATTERNS.redirect, ctx.code, track("redirect")),
+    geolocation:
+      ast.geolocation + countMatches(PATTERNS.geolocation, ctx.unparsedCode, track("geolocation")),
+    clipboard: ast.clipboard + countMatches(PATTERNS.clipboard, ctx.unparsedCode, track("clipboard")),
+    serviceWorker:
+      ast.serviceWorker +
+      countMatches(PATTERNS.serviceWorker, ctx.unparsedCode, track("serviceWorker")),
+    redirect: ast.redirect + countMatches(PATTERNS.redirect, ctx.unparsedCode, track("redirect")),
     topLevelNavigation:
-      countMatches(PATTERNS.topLevelNavigationCode, ctx.code, track("topLevelNavigation")) +
+      ast.topLevelNavigation +
+      countMatches(PATTERNS.topLevelNavigationCode, ctx.unparsedCode, track("topLevelNavigation")) +
       countMatches(PATTERNS.topLevelNavigationMarkup, ctx.html, track("topLevelNavigation")),
     download: countMatches(PATTERNS.download, ctx.html, track("download")),
     inlineEventHandler: countMatches(
@@ -233,7 +256,9 @@ export function detectSignals(ctx: ScanContext, refs: UrlRef[]): Signals {
     ),
     javascriptUri: countMatches(PATTERNS.javascriptUri, ctx.html, track("javascriptUri")),
     svgScript: countSvgScripts(ctx.html),
-    embeddedFrame: countMatches(PATTERNS.embeddedFrame, ctx.html, track("embeddedFrame")),
+    embeddedFrame:
+      ast.embeddedFrame + countMatches(PATTERNS.embeddedFrame, ctx.html, track("embeddedFrame")),
+    dynamicNetworkSink: ast.dynamicNetworkSink,
     metaRefresh: countMatches(PATTERNS.metaRefresh, ctx.html, track("metaRefresh")),
     passwordInput: countMatches(PATTERNS.passwordInput, ctx.html),
     evidence,
@@ -242,7 +267,7 @@ export function detectSignals(ctx: ScanContext, refs: UrlRef[]): Signals {
 
 export function toCapabilities(signals: Signals): Capabilities {
   return {
-    network: signals.externalNetworkSink > 0,
+    network: signals.externalNetworkSink > 0 || signals.dynamicNetworkSink > 0,
     sameOriginRequest: signals.sameOriginRequest > 0,
     storage: signals.storage,
     camera: signals.camera,
