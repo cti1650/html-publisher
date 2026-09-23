@@ -7,6 +7,7 @@ import { checkAuth, authContext, getAuthCapabilities, type AuthCapabilities } fr
 import { notifySlack } from "@/lib/slack";
 import { HOW_TO_USE_GUIDE } from "@/lib/guide";
 import { scanHtml } from "@/lib/security";
+import { evaluateSecurityGate } from "@/lib/security/gate";
 
 function renderStatusBlock(cap: AuthCapabilities): string {
   const yes = "可";
@@ -92,13 +93,13 @@ const handler = createMcpHandler(
       }
     );
 
-    // 公開前HTML静的解析（advisory / 公開はブロックしない）
+    // 公開前HTML静的解析。このツール単体は公開をブロックしない（create_tool 側で HIGH を止める）
     server.registerTool(
       "security_check",
       {
         title: "Security Check",
         description:
-          "【create_tool / update_tool の前に実行を推奨】公開予定のHTMLを静的解析し、そのHTMLが「何を要求し、どこと通信するのか」を可視化します。返却値の risk / findings / capabilities / externalDomains を確認し、HIGH・MEDIUMがあればユーザーに内容を説明してください。このツールは公開をブロックしません（advisory）。また脆弱性の完全判定を行うものではなく、検出0件でも安全の保証にはなりません（limitations に検出できない範囲を明記しています）",
+          "【create_tool / update_tool の前に実行を推奨】公開予定のHTMLを静的解析し、そのHTMLが「何を要求し、どこと通信するのか」を可視化します。返却値の risk / findings / capabilities / externalDomains を確認し、HIGH・MEDIUMがあればユーザーに内容を説明してください。このツール単体は公開をブロックしませんが、create_tool / update_tool では同じ解析が自動で走り、HIGHがあると confirm_security: true が無い限り失敗します。また脆弱性の完全判定を行うものではなく、検出0件でも安全の保証にはなりません（limitations に検出できない範囲を明記しています）",
         inputSchema: {
           html: z.string().min(1).describe("解析するHTMLコンテンツ（create_tool に渡す予定のもの）"),
         },
@@ -123,7 +124,7 @@ const handler = createMcpHandler(
       {
         title: "Create Tool",
         description:
-          "【実行前に必ずユーザーに確認を取ること】HTMLコンテンツを新規作成し、公開URLを取得します。実行前に「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「ephemeralモードの有無」をユーザーに説明し、作成してよいか確認を取ってください。ephemeral: trueにするとGistを使わず揮発キャッシュ（デフォルト6時間、アクセス毎にTTL延長）に保存されます。**APIキー無しの匿名アクセス時は強制的に揮発モードになります（Gist書き込みは認証必須）**",
+          "【実行前に必ずユーザーに確認を取ること】HTMLコンテンツを新規作成し、公開URLを取得します。**公開前チェックが自動で走り、HIGHが検出された場合は confirm_security: true が無いと失敗します**（HIGHが無ければ従来どおり指定不要）。実行前に「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「ephemeralモードの有無」をユーザーに説明し、作成してよいか確認を取ってください。ephemeral: trueにするとGistを使わず揮発キャッシュ（デフォルト6時間、アクセス毎にTTL延長）に保存されます。**APIキー無しの匿名アクセス時は強制的に揮発モードになります（Gist書き込みは認証必須）**",
         inputSchema: {
           html: z.string().min(1).describe("公開するHTMLコンテンツ"),
           name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
@@ -138,6 +139,12 @@ const handler = createMcpHandler(
             .boolean()
             .optional()
             .describe("trust: trueを指定する場合は必ずconfirm_trust: trueも指定してください。ユーザーに確認を取ってから有効化することを推奨します"),
+          confirm_security: z
+            .boolean()
+            .optional()
+            .describe(
+              "公開前チェックでHIGHが検出された場合のみ必要。内容をユーザーに説明し承認を得たうえで true を指定してください。HIGHが無い場合は指定不要です"
+            ),
           ephemeral: z
             .boolean()
             .optional()
@@ -146,7 +153,7 @@ const handler = createMcpHandler(
             ),
         },
       },
-      async ({ html, name, memo, trust, confirm_trust, ephemeral }) => {
+      async ({ html, name, memo, trust, confirm_trust, confirm_security, ephemeral }) => {
         if (trust && !confirm_trust) {
           return {
             content: [
@@ -164,6 +171,19 @@ const handler = createMcpHandler(
             ],
           };
         }
+        // 公開前チェック。HIGH がある場合のみ confirm_security を要求する
+        const gate = evaluateSecurityGate(html, {
+          selfOrigin: getBaseUrl(),
+          confirmed: confirm_security,
+        });
+        if (gate.blocked) {
+          return {
+            content: [
+              { type: "text", text: JSON.stringify({ error: gate.message, security: gate.summary }, null, 2) },
+            ],
+          };
+        }
+
         // 匿名アクセスは揮発モード固定（永続モード=Gist書き込みは認証必須）
         const authenticated = authContext.getStore()?.status === "authenticated";
         const finalEphemeral = !authenticated ? true : ephemeral;
@@ -187,7 +207,14 @@ const handler = createMcpHandler(
             {
               type: "text",
               text: JSON.stringify(
-                { id: result.id, url, rawUrl: result.rawUrl, trust: result.trust, mode: result.mode },
+                {
+                  id: result.id,
+                  url,
+                  rawUrl: result.rawUrl,
+                  trust: result.trust,
+                  mode: result.mode,
+                  security: gate.summary,
+                },
                 null,
                 2
               ),
@@ -239,7 +266,7 @@ const handler = createMcpHandler(
       {
         title: "Update Tool",
         description:
-          "【実行前に必ずユーザーに確認を取ること】【htmlパラメータ必須】HTMLコンテンツを上書き更新します。実行前に「どのような変更を行うか」「変更箇所の概要」をユーザーに説明し、更新してよいか確認を取ってください。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください。揮発モード・永続モードの判別はIDで自動的に行われます。**APIキー無しの匿名アクセス時は揮発モードのIDのみ更新可能（永続Gistの更新は認証必須）**",
+          "【実行前に必ずユーザーに確認を取ること】【htmlパラメータ必須】HTMLコンテンツを上書き更新します。**公開前チェックが自動で走り、HIGHが検出された場合は confirm_security: true が無いと失敗します**（HIGHが無ければ従来どおり指定不要）。実行前に「どのような変更を行うか」「変更箇所の概要」をユーザーに説明し、更新してよいか確認を取ってください。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください。揮発モード・永続モードの判別はIDで自動的に行われます。**APIキー無しの匿名アクセス時は揮発モードのIDのみ更新可能（永続Gistの更新は認証必須）**",
         inputSchema: {
           id: z
             .string()
@@ -260,9 +287,15 @@ const handler = createMcpHandler(
             .boolean()
             .optional()
             .describe("trust: trueを指定する場合は必ずconfirm_trust: trueも指定してください。ユーザーに確認を取ってから有効化することを推奨します"),
+          confirm_security: z
+            .boolean()
+            .optional()
+            .describe(
+              "公開前チェックでHIGHが検出された場合のみ必要。内容をユーザーに説明し承認を得たうえで true を指定してください。HIGHが無い場合は指定不要です"
+            ),
         },
       },
-      async ({ id, html, name, memo, trust, confirm_trust }) => {
+      async ({ id, html, name, memo, trust, confirm_trust, confirm_security }) => {
         if (trust && !confirm_trust) {
           return {
             content: [
@@ -300,6 +333,19 @@ const handler = createMcpHandler(
           };
         }
 
+        // 公開前チェック。HIGH がある場合のみ confirm_security を要求する
+        const gate = evaluateSecurityGate(html, {
+          selfOrigin: getBaseUrl(),
+          confirmed: confirm_security,
+        });
+        if (gate.blocked) {
+          return {
+            content: [
+              { type: "text", text: JSON.stringify({ error: gate.message, security: gate.summary }, null, 2) },
+            ],
+          };
+        }
+
         const result = await updateTool(id, html, { name, memo, trust });
         const toolPath = result.trust ? "tool-trust" : "tool";
         const url = `${getBaseUrl()}/${toolPath}/${id}`;
@@ -319,7 +365,7 @@ const handler = createMcpHandler(
             {
               type: "text",
               text: JSON.stringify(
-                { id, url, rawUrl: result.rawUrl, trust: result.trust, mode: result.mode },
+                { id, url, rawUrl: result.rawUrl, trust: result.trust, mode: result.mode, security: gate.summary },
                 null,
                 2
               ),
