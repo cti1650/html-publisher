@@ -4,12 +4,16 @@
 import { describe, expect, it } from "vitest";
 import type { AuthStatus } from "./auth";
 import {
+  CREATE_INPUT_ERROR,
   IMPORT_GIST_AUTH_ERROR,
   IMPORT_GIST_CACHE_ID_ERROR,
   PERSISTENT_UPDATE_AUTH_ERROR,
   TRUST_CONFIRMATION_ERROR,
+  UPDATE_INPUT_ERROR,
+  checkCreateInput,
   checkImportGistPermission,
   checkTrustConfirmation,
+  checkUpdateInput,
   checkUpdatePermission,
   resolveEphemeral,
   toolPath,
@@ -90,5 +94,40 @@ describe("toolPath", () => {
     expect(toolPath(true)).toBe("tool-trust");
     expect(toolPath(false)).toBe("tool");
     expect(toolPath(undefined)).toBe("tool");
+  });
+});
+
+describe("checkCreateInput", () => {
+  const edits = [{ old_text: "a", new_text: "b" }];
+
+  it.each([
+    { input: { html: "<p>x</p>" }, ok: true },
+    { input: { base_id: GIST_ID, edits }, ok: true },
+    // どちらも無い・両方ある・片方だけ
+    { input: {}, ok: false },
+    { input: { html: "<p>x</p>", base_id: GIST_ID, edits }, ok: false },
+    { input: { html: "<p>x</p>", edits }, ok: false },
+    // 無改変の複製はできない
+    { input: { base_id: GIST_ID }, ok: false },
+    { input: { edits }, ok: false },
+  ])("$input → ok=$ok", ({ input, ok }) => {
+    const result = checkCreateInput(input);
+    expect(result.ok).toBe(ok);
+    if (!result.ok) expect(result.error).toBe(CREATE_INPUT_ERROR);
+  });
+});
+
+describe("checkUpdateInput", () => {
+  const edits = [{ old_text: "a", new_text: "b" }];
+
+  it.each([
+    { input: { html: "<p>x</p>" }, ok: true },
+    { input: { edits }, ok: true },
+    { input: {}, ok: false },
+    { input: { html: "<p>x</p>", edits }, ok: false },
+  ])("$input → ok=$ok", ({ input, ok }) => {
+    const result = checkUpdateInput(input);
+    expect(result.ok).toBe(ok);
+    if (!result.ok) expect(result.error).toBe(UPDATE_INPUT_ERROR);
   });
 });

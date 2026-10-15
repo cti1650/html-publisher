@@ -51,3 +51,24 @@ export function checkImportGistPermission(status: AuthStatus, id: string): Polic
 export function toolPath(trust?: boolean): "tool" | "tool-trust" {
   return trust ? "tool-trust" : "tool";
 }
+
+export const CREATE_INPUT_ERROR =
+  "html（全文）か、base_id と edits（元にするツールのIDと書き換え内容）のどちらか一方を指定してください";
+
+export const UPDATE_INPUT_ERROR = "html（全文）か edits（書き換え内容）のどちらか一方を指定してください";
+
+/** create_tool は「html で全文」か「base_id + edits で既存ツールを書き換えて新規作成」のどちらか一方 */
+export function checkCreateInput(input: { html?: string; base_id?: string; edits?: unknown[] }): PolicyResult {
+  const hasHtml = input.html !== undefined;
+  const hasBase = input.base_id !== undefined;
+  const hasEdits = input.edits !== undefined;
+  if (hasHtml && !hasBase && !hasEdits) return OK;
+  if (!hasHtml && hasBase && hasEdits) return OK;
+  return { ok: false, error: CREATE_INPUT_ERROR };
+}
+
+/** update_tool は「html で全文」か「edits で差分」のどちらか一方 */
+export function checkUpdateInput(input: { html?: string; edits?: unknown[] }): PolicyResult {
+  if ((input.html !== undefined) !== (input.edits !== undefined)) return OK;
+  return { ok: false, error: UPDATE_INPUT_ERROR };
+}

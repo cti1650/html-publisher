@@ -10,12 +10,16 @@ import { scanHtml } from "@/lib/security";
 import { evaluateSecurityGate } from "@/lib/security/gate";
 import { TEMPLATES, TEMPLATE_IDS, getTemplateInfo, loadTemplateHtml } from "@/lib/templates";
 import {
+  checkCreateInput,
   checkImportGistPermission,
   checkTrustConfirmation,
+  checkUpdateInput,
   checkUpdatePermission,
   resolveEphemeral,
   toolPath,
 } from "@/lib/policy";
+import { EditError, applyEdits, type EditChange, type HtmlEdit } from "@/lib/edits";
+import { removeMetaTags } from "@/lib/gist";
 
 function renderStatusBlock(cap: AuthCapabilities): string {
   const yes = "可";
@@ -58,6 +62,47 @@ function errorResult(error: string) {
 
 function currentAuthStatus() {
   return authContext.getStore()?.status ?? "anonymous";
+}
+
+const editsSchema = z
+  .array(
+    z.object({
+      old_text: z
+        .string()
+        .min(1)
+        .describe(
+          "置き換え前の文字列。get_tool で取得した保存済みHTMLから、空白・改行・インデントを含めて正確に写す。HTML内でちょうど1か所に一致する必要がある（複数に一致する場合は前後の文脈を含めて一意にする）"
+        ),
+      new_text: z.string().describe("置き換え後の文字列（空文字で削除）"),
+    })
+  )
+  .min(1)
+  .max(50);
+
+/**
+ * 保存済みツールの HTML に edits を適用する。
+ * 失敗した場合は MCP のエラー応答を返す（何も保存しない）。
+ */
+async function applyEditsToTool(
+  id: string,
+  edits: HtmlEdit[],
+  label: string
+): Promise<{ html: string; changes: EditChange[] } | { error: ReturnType<typeof errorResult> }> {
+  let source: string;
+  try {
+    source = (await getTool(id)).html;
+  } catch (error) {
+    if (error instanceof Error && (error.message === "Tool not found" || error.message === "Gist not found")) {
+      return { error: errorResult(`${label} のツールが見つかりません: ${id}`) };
+    }
+    throw error;
+  }
+  try {
+    return applyEdits(source, edits);
+  } catch (error) {
+    if (error instanceof EditError) return { error: errorResult(error.message) };
+    throw error;
+  }
 }
 
 const handler = createMcpHandler(
@@ -186,9 +231,25 @@ const handler = createMcpHandler(
       {
         title: "Create Tool",
         description:
-          "【実行前に必ずユーザーに確認を取ること】HTMLコンテンツを新規作成し、公開URLを取得します。**公開前チェックが自動で走り、HIGHが検出された場合は confirm_security: true が無いと失敗します**（HIGHが無ければ従来どおり指定不要）。実行前に「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「ephemeralモードの有無」をユーザーに説明し、作成してよいか確認を取ってください。ephemeral: trueにするとGistを使わず揮発キャッシュ（デフォルト6時間、アクセス毎にTTL延長）に保存されます。**APIキー無しの匿名アクセス時は強制的に揮発モードになります（Gist書き込みは認証必須）**",
+          "【実行前に必ずユーザーに確認を取ること】HTMLコンテンツを新規作成し、公開URLを取得します。**公開前チェックが自動で走り、HIGHが検出された場合は confirm_security: true が無いと失敗します**（HIGHが無ければ従来どおり指定不要）。実行前に「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「ephemeralモードの有無」をユーザーに説明し、作成してよいか確認を取ってください。**既存ツールに似たツールを作る場合は html の代わりに base_id + edits を使うと、変更箇所だけを送って新しいツールを作成できます**（元のツールは変更されず、trust は引き継がれません。応答の changes に書き換え箇所の行番号と差分が入ります）。ephemeral: trueにするとGistを使わず揮発キャッシュ（デフォルト6時間、アクセス毎にTTL延長）に保存されます。**APIキー無しの匿名アクセス時は強制的に揮発モードになります（Gist書き込みは認証必須）**",
         inputSchema: {
-          html: z.string().min(1).describe("公開するHTMLコンテンツ"),
+          html: z
+            .string()
+            .min(1)
+            .optional()
+            .describe("公開するHTMLコンテンツ（全文）。base_id + edits を使う場合は指定しない"),
+          base_id: z
+            .string()
+            .min(1)
+            .optional()
+            .describe(
+              "元にする既存ツールのID。edits と組み合わせて、そのHTMLを書き換えた新しいツールを作成する（元のツールは変更しない）。trust は引き継がない"
+            ),
+          edits: editsSchema
+            .optional()
+            .describe(
+              "base_id のHTMLに対する書き換え内容。すべて元のHTMLに対して照合され、1つでも一致しない・複数に一致する・範囲が重なる場合は何も作成しない"
+            ),
           name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
           memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
           trust: z
@@ -215,9 +276,24 @@ const handler = createMcpHandler(
             ),
         },
       },
-      async ({ html, name, memo, trust, confirm_trust, confirm_security, ephemeral }) => {
+      async ({ html: inputHtml, base_id, edits, name, memo, trust, confirm_trust, confirm_security, ephemeral }) => {
+        const inputCheck = checkCreateInput({ html: inputHtml, base_id, edits });
+        if (!inputCheck.ok) return errorResult(inputCheck.error);
         const trustCheck = checkTrustConfirmation(trust, confirm_trust);
         if (!trustCheck.ok) return errorResult(trustCheck.error);
+
+        let html: string;
+        let changes: EditChange[] | undefined;
+        if (base_id !== undefined && edits !== undefined) {
+          const edited = await applyEditsToTool(base_id, edits, "base_id");
+          if ("error" in edited) return edited.error;
+          // 元ツールの name / memo / trust のメタタグは引き継がない
+          html = removeMetaTags(edited.html);
+          changes = edited.changes;
+        } else {
+          html = inputHtml!;
+        }
+
         // 公開前チェック。HIGH がある場合のみ confirm_security を要求する
         const gate = evaluateSecurityGate(html, {
           selfOrigin: getBaseUrl(),
@@ -226,7 +302,10 @@ const handler = createMcpHandler(
         if (gate.blocked) {
           return {
             content: [
-              { type: "text", text: JSON.stringify({ error: gate.message, security: gate.summary }, null, 2) },
+              {
+                type: "text",
+                text: JSON.stringify({ error: gate.message, security: gate.summary, changes }, null, 2),
+              },
             ],
           };
         }
@@ -257,6 +336,8 @@ const handler = createMcpHandler(
                   rawUrl: result.rawUrl,
                   trust: result.trust,
                   mode: result.mode,
+                  base: base_id !== undefined ? { id: base_id } : undefined,
+                  changes,
                   security: gate.summary,
                 },
                 null,
@@ -309,7 +390,7 @@ const handler = createMcpHandler(
       {
         title: "Update Tool",
         description:
-          "【実行前に必ずユーザーに確認を取ること】【htmlパラメータ必須】HTMLコンテンツを上書き更新します。**公開前チェックが自動で走り、HIGHが検出された場合は confirm_security: true が無いと失敗します**（HIGHが無ければ従来どおり指定不要）。実行前に「どのような変更を行うか」「変更箇所の概要」をユーザーに説明し、更新してよいか確認を取ってください。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください。揮発モード・永続モードの判別はIDで自動的に行われます。**APIキー無しの匿名アクセス時は揮発モードのIDのみ更新可能（永続Gistの更新は認証必須）**",
+          "【実行前に必ずユーザーに確認を取ること】【html（全文）か edits（差分）のどちらか一方が必須】HTMLコンテンツを上書き更新します。**一部だけ変える場合は edits を使うと、全文を送り直さずに済みます**（old_text は get_tool で取得した保存済みHTMLから写すこと。応答の changes に書き換え箇所の行番号と差分が入るので、意図した箇所かを確認すること）。**公開前チェックが自動で走り、HIGHが検出された場合は confirm_security: true が無いと失敗します**（HIGHが無ければ従来どおり指定不要）。実行前に「どのような変更を行うか」「変更箇所の概要」をユーザーに説明し、更新してよいか確認を取ってください。メタデータ（name/memo/trust）のみ変更したい場合はimport_gistを使用してください。揮発モード・永続モードの判別はIDで自動的に行われます。**APIキー無しの匿名アクセス時は揮発モードのIDのみ更新可能（永続Gistの更新は認証必須）**",
         inputSchema: {
           id: z
             .string()
@@ -317,7 +398,16 @@ const handler = createMcpHandler(
             .describe(
               "ツールのID。URLの/tool/または/tool-trust/の後ろの部分です（例: https://example.com/tool/abc123 → abc123）"
             ),
-          html: z.string().min(1).describe("更新後のHTMLコンテンツ"),
+          html: z
+            .string()
+            .min(1)
+            .optional()
+            .describe("更新後のHTMLコンテンツ（全文）。edits を使う場合は指定しない"),
+          edits: editsSchema
+            .optional()
+            .describe(
+              "保存済みHTMLに対する書き換え内容（差分更新）。すべて元のHTMLに対して照合され、1つでも一致しない・複数に一致する・範囲が重なる場合は何も更新しない"
+            ),
           name: z.string().optional().describe("ツール名（任意）。Gist説明とHTML内metaタグに反映されます"),
           memo: z.string().optional().describe("変更内容のメモ（任意）。Gist説明とHTML内metaタグに反映されます"),
           trust: z
@@ -338,11 +428,24 @@ const handler = createMcpHandler(
             ),
         },
       },
-      async ({ id, html, name, memo, trust, confirm_trust, confirm_security }) => {
+      async ({ id, html: inputHtml, edits, name, memo, trust, confirm_trust, confirm_security }) => {
+        const inputCheck = checkUpdateInput({ html: inputHtml, edits });
+        if (!inputCheck.ok) return errorResult(inputCheck.error);
         const trustCheck = checkTrustConfirmation(trust, confirm_trust);
         if (!trustCheck.ok) return errorResult(trustCheck.error);
         const updateCheck = checkUpdatePermission(currentAuthStatus(), id);
         if (!updateCheck.ok) return errorResult(updateCheck.error);
+
+        let html: string;
+        let changes: EditChange[] | undefined;
+        if (edits !== undefined) {
+          const edited = await applyEditsToTool(id, edits, "id");
+          if ("error" in edited) return edited.error;
+          html = edited.html;
+          changes = edited.changes;
+        } else {
+          html = inputHtml!;
+        }
 
         // 公開前チェック。HIGH がある場合のみ confirm_security を要求する
         const gate = evaluateSecurityGate(html, {
@@ -352,7 +455,10 @@ const handler = createMcpHandler(
         if (gate.blocked) {
           return {
             content: [
-              { type: "text", text: JSON.stringify({ error: gate.message, security: gate.summary }, null, 2) },
+              {
+                type: "text",
+                text: JSON.stringify({ error: gate.message, security: gate.summary, changes }, null, 2),
+              },
             ],
           };
         }
@@ -375,7 +481,15 @@ const handler = createMcpHandler(
             {
               type: "text",
               text: JSON.stringify(
-                { id, url, rawUrl: result.rawUrl, trust: result.trust, mode: result.mode, security: gate.summary },
+                {
+                  id,
+                  url,
+                  rawUrl: result.rawUrl,
+                  trust: result.trust,
+                  mode: result.mode,
+                  changes,
+                  security: gate.summary,
+                },
                 null,
                 2
               ),

@@ -11,9 +11,9 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 | \`list_templates\` | 動作確認済みの実装サンプル（テンプレート）一覧を取得。**HTMLを書き始める前に確認推奨** |
 | \`get_template\` | テンプレートのHTML本体と書き換え箇所を取得 |
 | \`security_check\` | 公開予定のHTMLを静的解析し、要求機能・外部依存・リスクを可視化。**create_tool / update_tool の前に実行推奨** |
-| \`create_tool\` | HTMLを新規作成して公開URLを取得（\`ephemeral: true\` で揮発モード） |
+| \`create_tool\` | HTMLを新規作成して公開URLを取得（\`ephemeral: true\` で揮発モード）。\`base_id\` + \`edits\` で既存ツールを書き換えた新しいツールも作れる |
 | \`get_tool\` | IDからHTMLソースを取得（揮発・永続を自動判別） |
-| \`update_tool\` | 既存ツールのHTMLを上書き更新 |
+| \`update_tool\` | 既存ツールのHTMLを上書き更新。\`html\`（全文）か \`edits\`（差分）のどちらか一方を指定 |
 | \`import_gist\` | 手動で作成済みのGistをHTML Publisher管理下に取り込み（永続モード専用、HTMLは変更しない） |
 | \`list_recent_tools\` | 直近のツール一覧を取得（永続モードのみ） |
 | \`get_gist_url\` | GistをGitHub上で編集するためのURLを取得（永続モード専用） |
@@ -78,10 +78,25 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 
 ### 2. 既存HTMLの修正
 1. 修正対象のIDをユーザーから受け取る（URLの末尾部分、\`c_\` プレフィックス有無で揮発/永続を識別）
-2. 必要に応じて \`get_tool\` で現状のHTMLを確認
+2. \`get_tool\` で現状のHTMLを確認
 3. ユーザーに「どのような変更を行うか」を説明し確認を取る
-4. 更新後のHTMLを \`security_check\` にかけ、HIGH / MEDIUM があればユーザーに説明する
-5. \`update_tool\` で上書き更新（揮発・永続の判別はIDから自動）
+4. 一部だけ変える場合は \`update_tool\` に \`edits\` を渡す（後述「差分での作成・更新」）。大きく作り変える場合は \`html\` で全文を渡し、事前に \`security_check\` にかける
+5. 応答の \`changes\` で書き換え箇所を確認し、ユーザーに説明する
+
+### 2-b. 既存ツールに似たツールを作る
+1. 元にするツールのIDを確認し、\`get_tool\` でHTMLを取得する
+2. \`create_tool\` に \`base_id\`（元のID）と \`edits\`（変更箇所）を渡す。元のツールは変更されない
+3. \`name\` / \`memo\` / \`trust\` は元から引き継がない。必要なら改めて指定する（trust は \`confirm_trust\` も必須）
+
+### 差分での作成・更新（edits）
+\`edits: [{ old_text, new_text }]\` で変更箇所だけを送る。HTML全文を出力し直さないため、速く・少ないトークンで済む。
+- \`old_text\` は **\`get_tool\` で取得した保存済みHTML** から写す（保存時に整形されるため、最初に送ったHTMLとは改行・インデントが異なる）
+- 完全一致のみ。空白・改行・インデントも一致させる
+- 各 \`old_text\` はHTML内で **ちょうど1か所** に一致させる。複数に一致するとエラーになるので、前後の行を含めて一意にする
+- すべての \`old_text\` は元のHTMLに対して照合される（前の書き換え結果には照合されない）。書き換え範囲が重なるとエラー
+- 1つでもエラーがあれば何も保存されない。エラーメッセージに従って直して再実行する
+- 応答の \`changes\` に、各書き換えの行番号と前後の差分（\`-\` が変更前、\`+\` が変更後）が入る。**意図した箇所が書き換わったかを必ず確認する**
+- 変更が全体の大部分に及ぶ場合は、\`edits\` ではなく \`html\` で全文を渡す
 
 ### 3. メタデータのみ変更（永続モードのみ）
 - HTMLは変更せず name/memo/trust だけ変えたい場合は \`import_gist\` を使う（\`update_tool\` ではない）
