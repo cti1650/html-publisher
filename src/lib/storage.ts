@@ -58,7 +58,7 @@ function gistAvailable(): boolean {
   return Boolean(process.env.GITHUB_TOKEN);
 }
 
-function pickMode(ephemeral?: boolean): StorageMode {
+export function pickMode(ephemeral?: boolean): StorageMode {
   if (ephemeral) return "cache";
   if (!gistAvailable() && isCacheEnabled()) return "cache";
   return "gist";

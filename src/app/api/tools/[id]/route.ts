@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTool, updateTool } from "@/lib/storage";
 import { checkAuth, unauthorizedResponse, forbiddenResponse } from "@/lib/auth";
-import { isCacheId } from "@/lib/cache";
 import { notifySlack } from "@/lib/slack";
+import { checkUpdatePermission, toolPath } from "@/lib/policy";
 
 export async function GET(
   request: NextRequest,
@@ -18,8 +18,7 @@ export async function GET(
     const result = await getTool(id);
 
     const baseUrl = request.nextUrl.origin;
-    const toolPath = result.trust ? "tool-trust" : "tool";
-    const url = `${baseUrl}/${toolPath}/${id}`;
+    const url = `${baseUrl}/${toolPath(result.trust)}/${id}`;
 
     return NextResponse.json(
       { id, html: result.html, rawUrl: result.rawUrl, url, trust: result.trust, mode: result.mode },
@@ -50,7 +49,6 @@ export async function PUT(
   if (auth === "rejected") {
     return unauthorizedResponse();
   }
-  const authenticated = auth === "authenticated";
 
   try {
     const { id } = await params;
@@ -59,11 +57,9 @@ export async function PUT(
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
 
-    // 永続モード（Gist）の更新は認証必須。匿名は揮発モードのみ更新可
-    if (!authenticated && !isCacheId(id)) {
-      return forbiddenResponse(
-        "永続モード（Gist）の更新には認証が必要です。揮発モード（c_で始まるID）のみ匿名で更新可能です"
-      );
+    const updateCheck = checkUpdatePermission(auth, id);
+    if (!updateCheck.ok) {
+      return forbiddenResponse(updateCheck.error);
     }
 
     const body = await request.json();
@@ -79,8 +75,7 @@ export async function PUT(
     const result = await updateTool(id, html, { name, memo, trust });
 
     const baseUrl = request.nextUrl.origin;
-    const toolPath = result.trust ? "tool-trust" : "tool";
-    const url = `${baseUrl}/${toolPath}/${id}`;
+    const url = `${baseUrl}/${toolPath(result.trust)}/${id}`;
 
     await notifySlack({
       type: "update",

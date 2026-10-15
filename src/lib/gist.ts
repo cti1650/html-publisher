@@ -22,7 +22,7 @@ interface GistOptions {
   trust?: boolean;
 }
 
-function extractMetaFromHtml(html: string): { name?: string; memo?: string; trust?: boolean } {
+export function extractMetaFromHtml(html: string): { name?: string; memo?: string; trust?: boolean } {
   const nameMatch = html.match(/<meta\s+name="tool-name"\s+content="([^"]*)"/);
   const memoMatch = html.match(/<meta\s+name="tool-memo"\s+content="([^"]*)"/);
   const trustMatch = html.match(/<meta\s+name="tool-trust"\s+content="([^"]*)"/);
@@ -34,14 +34,15 @@ function extractMetaFromHtml(html: string): { name?: string; memo?: string; trus
   };
 }
 
-function removeMetaTags(html: string): string {
+// 保存時に Prettier が <meta ... /> 形式に整形するため、自己終了形式も除去対象にする
+export function removeMetaTags(html: string): string {
   return html
-    .replace(/<meta\s+name="tool-name"\s+content="[^"]*">\n?\s*/g, "")
-    .replace(/<meta\s+name="tool-memo"\s+content="[^"]*">\n?\s*/g, "")
-    .replace(/<meta\s+name="tool-trust"\s+content="[^"]*">\n?\s*/g, "");
+    .replace(/<meta\s+name="tool-name"\s+content="[^"]*"\s*\/?>\n?\s*/g, "")
+    .replace(/<meta\s+name="tool-memo"\s+content="[^"]*"\s*\/?>\n?\s*/g, "")
+    .replace(/<meta\s+name="tool-trust"\s+content="[^"]*"\s*\/?>\n?\s*/g, "");
 }
 
-function insertMetaTags(html: string, options: GistOptions): string {
+export function insertMetaTags(html: string, options: GistOptions): string {
   const tags: string[] = [];
 
   if (options.name) {
@@ -74,7 +75,7 @@ function insertMetaTags(html: string, options: GistOptions): string {
   return `${metaTags}\n${html}`;
 }
 
-function buildDescription(options: GistOptions): string {
+export function buildDescription(options: GistOptions): string {
   const parts: string[] = [];
 
   if (options.name) {
