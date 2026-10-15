@@ -268,15 +268,38 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `list_templates` | 動作確認済みの実装サンプル（テンプレート）一覧を取得 |
 | `get_template` | テンプレートのHTML本体と書き換え箇所・trustの要否を取得 |
 | `security_check` | 公開予定のHTMLを静的解析し、要求機能・外部依存・リスクを可視化 |
-| `create_tool` | HTMLを新規作成し公開URLを取得（`ephemeral: true` で揮発モード） |
+| `create_tool` | HTMLを新規作成し公開URLを取得（`ephemeral: true` で揮発モード）。`base_id` + `edits` で既存ツールを書き換えた新しいツールを作成 |
 | `get_tool` | IDからHTMLソースを取得（揮発・永続を自動判別） |
-| `update_tool` | 既存ツールのHTMLを上書き更新（htmlパラメータ必須） |
+| `update_tool` | 既存ツールのHTMLを上書き更新（`html` で全文、または `edits` で差分） |
 | `import_gist` | 既存Gistにメタデータのみ追加（永続モード専用） |
 | `list_recent_tools` | 直近のツール一覧を取得（最大10件、永続モードのみ。揮発はプライバシー保護のため含まない） |
 | `get_gist_url` | Gistの編集ページURLを取得（永続モード専用） |
 | `get_qr_code` | ツール共有用QRコードのURLを取得 |
 
 スキルプラグインを導入していないクライアントでも、`how_to_use` を最初に呼び出すことで推奨ワークフローを把握できます。
+
+### 差分での作成・更新（edits）
+
+`create_tool` / `update_tool` は、HTML全文の代わりに変更箇所だけを `edits` で受け取れます。AIがHTML全文を出力し直さずに済むため、似たツールの作成や小さな修正が速く・少ないトークンで済みます。
+
+```jsonc
+// 既存ツールを元に新しいツールを作る（元のツールは変更しない）
+create_tool({
+  "base_id": "abc123...",
+  "edits": [{ "old_text": "<h1>経費精算</h1>", "new_text": "<h1>交通費申請</h1>" }],
+  "name": "交通費申請"
+})
+
+// 既存ツールの一部だけを書き換える
+update_tool({ "id": "abc123...", "edits": [{ "old_text": "...", "new_text": "..." }] })
+```
+
+- `old_text` は完全一致で、HTML内のちょうど1か所に一致する必要があります（複数に一致する場合はエラー）
+- すべての `old_text` は元のHTMLに対して照合され、書き換え範囲が重なる場合はエラーになります
+- 1つでもエラーがあれば何も保存しません
+- 応答の `changes` に、各書き換えの行番号と前後の差分が入ります
+- `base_id` から作成した場合、name / memo / trust は引き継ぎません。公開前チェックは書き換え後のHTMLにかかります
+- REST API（`/api/tools`）は対象外で、MCPのみ対応しています
 
 ### 実装テンプレート
 
