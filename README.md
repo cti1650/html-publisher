@@ -252,6 +252,8 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 |---------|------|
 | `how_to_use` | HTML Publisherの使い方ガイドを取得（推奨ワークフロー、各ツールの使い分け、trustフラグの判断基準など） |
 | `get_status` | 現在の認証状態と、このセッションで利用可能な操作を取得 |
+| `list_templates` | 動作確認済みの実装サンプル（テンプレート）一覧を取得 |
+| `get_template` | テンプレートのHTML本体と書き換え箇所・trustの要否を取得 |
 | `security_check` | 公開予定のHTMLを静的解析し、要求機能・外部依存・リスクを可視化 |
 | `create_tool` | HTMLを新規作成し公開URLを取得（`ephemeral: true` で揮発モード） |
 | `get_tool` | IDからHTMLソースを取得（揮発・永続を自動判別） |
@@ -262,6 +264,19 @@ MCPエンドポイントはAPIキー認証に対応しています。API_KEYは`
 | `get_qr_code` | ツール共有用QRコードのURLを取得 |
 
 スキルプラグインを導入していないクライアントでも、`how_to_use` を最初に呼び出すことで推奨ワークフローを把握できます。
+
+### 実装テンプレート
+
+`list_templates` / `get_template` で、HTML Publisher 上で動作確認済みのテンプレートを取得できます。AIはテンプレート内のマーカー（`*:START` 〜 `*:END`）の範囲だけを書き換えて公開します。
+
+| id | 内容 | trust |
+|---|---|---|
+| `basic-webapp` | React + Tailwind CSS のシンプルなWebアプリ | 不要 |
+| `slides` | Reveal.js のスライド（PDF保存・全画面ボタン付き） | 不要 |
+| `userscript-installer` | Tampermonkey用UserScript / ブックマークレットの導入支援ページ（コピーボタン・要求権限の表示） | 推奨 |
+| `chrome-extension-zip` | Chrome拡張機能（Manifest V3）のファイル一式をブラウザ内でZIP化してダウンロード | 必要 |
+
+テンプレート本体は `src/templates/<id>.html`、一覧情報は `src/lib/templates.ts` にあります。追加・変更した場合は `npm test` で「HIGH の検出がないこと」「`trustRequired` が `security_check` の判定と一致すること」が検証されます。
 
 ### 公開前チェック（security_check）
 

@@ -8,6 +8,8 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 | ツール | 用途 |
 |---|---|
 | \`get_status\` | 現在の認証状態と利用可能な操作（永続モード可否など）を取得。**create_tool 等を呼ぶ前に確認推奨** |
+| \`list_templates\` | 動作確認済みの実装サンプル（テンプレート）一覧を取得。**HTMLを書き始める前に確認推奨** |
+| \`get_template\` | テンプレートのHTML本体と書き換え箇所を取得 |
 | \`security_check\` | 公開予定のHTMLを静的解析し、要求機能・外部依存・リスクを可視化。**create_tool / update_tool の前に実行推奨** |
 | \`create_tool\` | HTMLを新規作成して公開URLを取得（\`ephemeral: true\` で揮発モード） |
 | \`get_tool\` | IDからHTMLソースを取得（揮発・永続を自動判別） |
@@ -64,14 +66,15 @@ export const HOW_TO_USE_GUIDE = `# HTML Publisher 使い方ガイド
 ## 推奨ワークフロー
 
 ### 1. 新規HTML作成 → 公開
-1. HTMLを生成する前に、ユーザーに「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「揮発か永続か」を説明し確認を取る
-2. \`security_check\` にHTMLを渡し、\`risk\` / \`findings\` / \`capabilities\` / \`externalDomains\` を確認する
-3. HIGH / MEDIUM の findings があればユーザーに内容を説明し、必要ならHTMLを修正して再度 \`security_check\` を実行
-4. \`create_tool\` を実行（必要なら \`ephemeral: true\` を付与）
-5. 返却された \`url\` と \`id\` をユーザーに提示
-6. QR共有が必要な場合は \`get_qr_code\` を呼ぶ
+1. \`list_templates\` で依頼に合うテンプレートがあるか確認し、あれば \`get_template\` で取得してそれをベースにする（後述「実装テンプレート」）
+2. HTMLを生成する前に、ユーザーに「どのようなHTMLを作成するか」「name/memoの内容」「trustモードの有無」「揮発か永続か」を説明し確認を取る
+3. \`security_check\` にHTMLを渡し、\`risk\` / \`findings\` / \`capabilities\` / \`externalDomains\` を確認する
+4. HIGH / MEDIUM の findings があればユーザーに内容を説明し、必要ならHTMLを修正して再度 \`security_check\` を実行
+5. \`create_tool\` を実行（必要なら \`ephemeral: true\` を付与）
+6. 返却された \`url\` と \`id\` をユーザーに提示
+7. QR共有が必要な場合は \`get_qr_code\` を呼ぶ
 
-> \`create_tool\` / \`update_tool\` では**公開前チェックが自動で走る**。HIGHが検出されると \`confirm_security: true\` が無い限り失敗するため、手順2〜3を飛ばしても最終的にユーザー確認が入る。ただしエラーになってから慌てるより、先に \`security_check\` で確認したほうがユーザーへの説明がしやすい。
+> \`create_tool\` / \`update_tool\` では**公開前チェックが自動で走る**。HIGHが検出されると \`confirm_security: true\` が無い限り失敗するため、手順3〜4を飛ばしても最終的にユーザー確認が入る。ただしエラーになってから慌てるより、先に \`security_check\` で確認したほうがユーザーへの説明がしやすい。
 
 ### 2. 既存HTMLの修正
 1. 修正対象のIDをユーザーから受け取る（URLの末尾部分、\`c_\` プレフィックス有無で揮発/永続を識別）
@@ -153,6 +156,21 @@ ID と \`trust\` フラグからユーザーに提示するURLを構成できる
 | ツール公開URL（\`trust: true\`） | \`<base>/tool-trust/<id>\` |
 | QRコード表示ページ | \`<base>/qr/<id>?size=<100-500>\`（\`get_qr_code\` の \`qrPageUrl\`） |
 | Gist編集ページ（永続のみ） | \`https://gist.github.com/<user>/<id>\`（\`get_gist_url\` の \`gistUrl\`） |
+
+## 実装テンプレート
+
+\`list_templates\` / \`get_template\` で、HTML Publisher 上で動作確認済みのテンプレートを取得できる。依頼が以下に当てはまる場合はゼロから書かずにテンプレートを使うこと。
+
+| id | 用途 | trust |
+|---|---|---|
+| \`basic-webapp\` | React + Tailwind CSS のシンプルなWebアプリ | 不要 |
+| \`slides\` | スライド（Reveal.js + PDF保存 + 全画面ボタン） | 不要（全画面・PDF保存を確実にするなら推奨） |
+| \`userscript-installer\` | Tampermonkey用UserScript / ブックマークレットの導入支援ページ | 推奨（trust なしでもコピーはフォールバックで動く） |
+| \`chrome-extension-zip\` | Chrome拡張機能のファイル一式をZIPでダウンロードさせるページ | 必要（ダウンロード） |
+
+- 書き換えるのはマーカー（\`*:START\` 〜 \`*:END\`）で囲まれた範囲。コピー・ダウンロード・PDF保存などの共通処理は原則そのまま使う
+- UserScript / 拡張機能の本体は \`<script type="text/plain">\` に入れる。\`security_check\` はこの中身もJSとして解析するため、配布するコード自体のリスクも可視化される（JSの文字列リテラルに埋め込むと解析を素通りするので避ける）
+- trust が必要なテンプレートを使う場合も、\`trust: true\` の指定前にユーザーの承認を取ること
 
 ## HTML作成のヒント（CDN活用例）
 

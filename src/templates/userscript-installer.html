@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UserScript Installer</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.4"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <!--
+    配布するUserScript本体。type="text/plain" なので実行はされないが、
+    HTML Publisher の security_check はこの中身もJSとして解析する（文字列リテラルに埋め込むと解析を素通りする）。
+    本体に "</script>" を含める場合は "<\/script>" と書くこと。
+  -->
+  <!-- USERSCRIPT:START -->
+  <script type="text/plain" id="userscript">
+// ==UserScript==
+// @name         Example Banner
+// @namespace    https://example.com/
+// @version      1.0.0
+// @description  example.com の上部にバナーを表示するサンプル
+// @match        https://example.com/*
+// @grant        none
+// @run-at       document-idle
+// ==/UserScript==
+
+(function () {
+  "use strict";
+  const banner = document.createElement("div");
+  banner.textContent = "UserScript が動作しています";
+  banner.style.cssText =
+    "position:fixed;top:0;left:0;right:0;z-index:99999;padding:8px;background:#2563eb;color:#fff;text-align:center;font:14px sans-serif";
+  document.body.appendChild(banner);
+})();
+  </script>
+  <!-- USERSCRIPT:END -->
+
+  <main class="mx-auto max-w-3xl space-y-6 p-4 sm:p-8">
+    <header>
+      <h1 id="script-name" class="text-2xl font-bold">UserScript</h1>
+      <p id="script-description" class="text-slate-600"></p>
+    </header>
+
+    <section class="rounded-lg bg-white p-4 shadow-sm">
+      <h2 class="mb-2 font-bold">このスクリプトが要求するもの</h2>
+      <p class="mb-3 text-sm text-slate-500">導入前に、動作するサイトと権限が意図どおりか確認してください。</p>
+      <dl id="metadata" class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm"></dl>
+      <p id="metadata-warning" class="mt-3 hidden rounded bg-amber-50 p-2 text-sm text-amber-800"></p>
+    </section>
+
+    <section class="rounded-lg bg-white p-4 shadow-sm">
+      <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="font-bold">Tampermonkey 用スクリプト</h2>
+        <button type="button" data-copy="userscript-text" class="rounded bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">
+          コピー
+        </button>
+      </div>
+      <textarea id="userscript-text" readonly rows="14" class="w-full rounded border border-slate-300 bg-slate-50 p-2 font-mono text-xs"></textarea>
+      <h3 class="mt-4 mb-1 font-bold">導入手順</h3>
+      <ol class="list-decimal space-y-1 pl-5 text-sm">
+        <li>ブラウザに <a class="text-blue-600 underline" href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer">Tampermonkey</a> をインストールする</li>
+        <li>Chrome の場合: 拡張機能の管理画面で Tampermonkey の「詳細」を開き、「ユーザー スクリプトを許可」をオンにする（バージョンによってはデベロッパーモードをオン）</li>
+        <li>上の「コピー」ボタンでスクリプトをコピーする</li>
+        <li>Tampermonkey のアイコン →「新規スクリプトを追加」を開き、中身をすべて置き換えて貼り付ける</li>
+        <li>Ctrl+S（Mac は Cmd+S）で保存し、対象サイトを再読み込みする</li>
+      </ol>
+      <p class="mt-2 text-xs text-slate-500">この方法で導入したスクリプトは自動更新されません。新しい版が出たら同じ手順で上書きしてください。</p>
+    </section>
+
+    <section id="bookmarklet-section" class="rounded-lg bg-white p-4 shadow-sm">
+      <h2 class="mb-2 font-bold">ブックマークレット</h2>
+      <div id="bookmarklet-available">
+        <p class="mb-3 text-sm">下のボタンをブックマークバーにドラッグして登録し、対象ページで押すと実行されます。</p>
+        <div class="flex flex-wrap items-center gap-2">
+          <a id="bookmarklet-link" class="rounded border-2 border-dashed border-blue-400 px-4 py-2 font-bold text-blue-700">ブックマークレット</a>
+          <button type="button" data-copy="bookmarklet-text" class="rounded border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100">URLをコピー</button>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">ドラッグできない場合は「URLをコピー」して、ブックマークを新規作成しURL欄に貼り付けてください。</p>
+        <textarea id="bookmarklet-text" readonly rows="3" class="mt-2 w-full rounded border border-slate-300 bg-slate-50 p-2 font-mono text-xs"></textarea>
+      </div>
+      <p id="bookmarklet-unavailable" class="hidden text-sm text-slate-600"></p>
+    </section>
+
+    <p id="copy-status" role="status" class="fixed bottom-4 left-1/2 hidden -translate-x-1/2 rounded bg-slate-800 px-4 py-2 text-sm text-white"></p>
+  </main>
+
+  <script>
+    const source = document.getElementById("userscript").textContent.trim();
+
+    function parseMetadata(code) {
+      const block = code.match(/\/\/\s*==UserScript==([\s\S]*?)\/\/\s*==\/UserScript==/);
+      const entries = [];
+      if (!block) return entries;
+      for (const line of block[1].split("\n")) {
+        const m = line.match(/^\s*\/\/\s*@(\S+)\s*(.*)$/);
+        if (m) entries.push({ key: m[1], value: m[2].trim() });
+      }
+      return entries;
+    }
+
+    const metadata = parseMetadata(source);
+    const values = (key) => metadata.filter((e) => e.key === key).map((e) => e.value);
+    const grants = values("grant");
+    const matches = [...values("match"), ...values("include")];
+    const scriptName = values("name")[0] || "UserScript";
+
+    document.title = scriptName;
+    document.getElementById("script-name").textContent = scriptName;
+    document.getElementById("script-description").textContent = values("description")[0] || "";
+    document.getElementById("userscript-text").value = source;
+    document.getElementById("bookmarklet-link").textContent = scriptName;
+
+    // 確認してほしい項目だけを表示する
+    const metadataEl = document.getElementById("metadata");
+    for (const key of ["version", "match", "include", "exclude", "grant", "connect", "require", "run-at", "sandbox"]) {
+      for (const value of values(key)) {
+        const dt = document.createElement("dt");
+        dt.className = "font-mono text-slate-500";
+        dt.textContent = "@" + key;
+        const dd = document.createElement("dd");
+        dd.className = "font-mono break-all";
+        dd.textContent = value;
+        metadataEl.append(dt, dd);
+      }
+    }
+
+    const warnings = [];
+    if (matches.some((m) => /^\*:\/\/\*\/\*$|^<all_urls>$|^\*$/.test(m))) {
+      warnings.push("すべてのサイトで動作する設定です。");
+    }
+    if (values("connect").includes("*")) warnings.push("任意のドメインへの通信を許可しています。");
+    if (grants.includes("unsafeWindow")) warnings.push("ページのwindowを直接操作します（unsafeWindow）。");
+    if (warnings.length) {
+      const el = document.getElementById("metadata-warning");
+      el.textContent = "注意: " + warnings.join(" ");
+      el.classList.remove("hidden");
+    }
+
+    // GM_* API は Tampermonkey の外では使えないため、@grant none のときだけブックマークレット化する
+    const bookmarkletUsable = grants.length === 0 || grants.every((g) => g === "none");
+    if (bookmarkletUsable) {
+      const body = source.replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==/, "").trim();
+      const url = "javascript:" + encodeURIComponent("(function(){" + body + "\n})();");
+      document.getElementById("bookmarklet-link").setAttribute("href", url);
+      document.getElementById("bookmarklet-text").value = url;
+    } else {
+      document.getElementById("bookmarklet-available").classList.add("hidden");
+      const el = document.getElementById("bookmarklet-unavailable");
+      el.textContent = "このスクリプトは Tampermonkey の機能（" + grants.join(", ") + "）を使うため、ブックマークレットでは動作しません。";
+      el.classList.remove("hidden");
+    }
+
+    function showStatus(message) {
+      const el = document.getElementById("copy-status");
+      el.textContent = message;
+      el.classList.remove("hidden");
+      clearTimeout(showStatus.timer);
+      showStatus.timer = setTimeout(() => el.classList.add("hidden"), 2000);
+    }
+
+    async function copyFrom(textarea) {
+      try {
+        await navigator.clipboard.writeText(textarea.value);
+        return true;
+      } catch {
+        // iframe（trust: false）では Clipboard API が使えないため、選択してコピーにフォールバックする
+        textarea.focus();
+        textarea.select();
+        try {
+          return document.execCommand("copy");
+        } catch {
+          return false;
+        }
+      }
+    }
+
+    for (const button of document.querySelectorAll("[data-copy]")) {
+      button.addEventListener("click", async () => {
+        const textarea = document.getElementById(button.dataset.copy);
+        const ok = await copyFrom(textarea);
+        showStatus(ok ? "コピーしました" : "コピーできませんでした。選択済みのテキストを Ctrl+C / Cmd+C でコピーしてください");
+      });
+    }
+  </script>
+</body>
+</html>
