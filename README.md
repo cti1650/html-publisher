@@ -70,6 +70,19 @@ npm run dev
 
 http://localhost:3000 で起動します。
 
+### 4. テスト・静的チェック
+
+```bash
+npm run lint           # ESLint
+npm run typecheck      # 型チェック（tsc --noEmit）
+npm test               # 単体テスト（Vitest）
+npm run test:coverage  # カバレッジ付きで実行（閾値なし・表示のみ）
+```
+
+テストは外部サービス（GitHub / Upstash / Slack）に接続しません。環境変数はテスト内で上書きするため、`.env` の内容には影響されません。
+
+PR と `main` への push では GitHub Actions（`.github/workflows/ci.yml`）が lint → 型チェック → テスト → ビルドを実行します。シークレットの登録は不要です。
+
 ## API仕様
 
 ### 認証

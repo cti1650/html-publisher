@@ -9,6 +9,13 @@ import { HOW_TO_USE_GUIDE } from "@/lib/guide";
 import { scanHtml } from "@/lib/security";
 import { evaluateSecurityGate } from "@/lib/security/gate";
 import { TEMPLATES, TEMPLATE_IDS, getTemplateInfo, loadTemplateHtml } from "@/lib/templates";
+import {
+  checkImportGistPermission,
+  checkTrustConfirmation,
+  checkUpdatePermission,
+  resolveEphemeral,
+  toolPath,
+} from "@/lib/policy";
 
 function renderStatusBlock(cap: AuthCapabilities): string {
   const yes = "可";
@@ -45,6 +52,14 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
+function errorResult(error: string) {
+  return { content: [{ type: "text" as const, text: JSON.stringify({ error }, null, 2) }] };
+}
+
+function currentAuthStatus() {
+  return authContext.getStore()?.status ?? "anonymous";
+}
+
 const handler = createMcpHandler(
   (server) => {
     // 使い方ガイド
@@ -57,7 +72,7 @@ const handler = createMcpHandler(
         inputSchema: {},
       },
       async () => {
-        const status = authContext.getStore()?.status ?? "anonymous";
+        const status = currentAuthStatus();
         const cap = getAuthCapabilities(status);
         const statusBlock = renderStatusBlock(cap);
         return {
@@ -81,7 +96,7 @@ const handler = createMcpHandler(
         inputSchema: {},
       },
       async () => {
-        const status = authContext.getStore()?.status ?? "anonymous";
+        const status = currentAuthStatus();
         const cap = getAuthCapabilities(status);
         return {
           content: [
@@ -201,23 +216,8 @@ const handler = createMcpHandler(
         },
       },
       async ({ html, name, memo, trust, confirm_trust, confirm_security, ephemeral }) => {
-        if (trust && !confirm_trust) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    error:
-                      "trust: trueを指定する場合はconfirm_trust: trueも必要です。信頼モードはセキュリティ制限が無効化されます。ユーザーに確認を取ってから再実行してください。",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
+        const trustCheck = checkTrustConfirmation(trust, confirm_trust);
+        if (!trustCheck.ok) return errorResult(trustCheck.error);
         // 公開前チェック。HIGH がある場合のみ confirm_security を要求する
         const gate = evaluateSecurityGate(html, {
           selfOrigin: getBaseUrl(),
@@ -231,13 +231,10 @@ const handler = createMcpHandler(
           };
         }
 
-        // 匿名アクセスは揮発モード固定（永続モード=Gist書き込みは認証必須）
-        const authenticated = authContext.getStore()?.status === "authenticated";
-        const finalEphemeral = !authenticated ? true : ephemeral;
+        const finalEphemeral = resolveEphemeral(currentAuthStatus(), ephemeral);
 
         const result = await createTool(html, { name, memo, trust, ephemeral: finalEphemeral });
-        const toolPath = result.trust ? "tool-trust" : "tool";
-        const url = `${getBaseUrl()}/${toolPath}/${result.id}`;
+        const url = `${getBaseUrl()}/${toolPath(result.trust)}/${result.id}`;
 
         await notifySlack({
           type: "create",
@@ -289,8 +286,7 @@ const handler = createMcpHandler(
       },
       async ({ id }) => {
         const result = await getTool(id);
-        const toolPath = result.trust ? "tool-trust" : "tool";
-        const url = `${getBaseUrl()}/${toolPath}/${id}`;
+        const url = `${getBaseUrl()}/${toolPath(result.trust)}/${id}`;
 
         return {
           content: [
@@ -343,42 +339,10 @@ const handler = createMcpHandler(
         },
       },
       async ({ id, html, name, memo, trust, confirm_trust, confirm_security }) => {
-        if (trust && !confirm_trust) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    error:
-                      "trust: trueを指定する場合はconfirm_trust: trueも必要です。信頼モードはセキュリティ制限が無効化されます。ユーザーに確認を取ってから再実行してください。",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-        // 永続モード（Gist）の更新は認証必須。匿名は揮発モードのみ更新可
-        const authenticated = authContext.getStore()?.status === "authenticated";
-        if (!authenticated && !isCacheId(id)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    error:
-                      "永続モード（Gist）の更新には認証が必要です。揮発モード（c_で始まるID）のみ匿名で更新可能です",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
+        const trustCheck = checkTrustConfirmation(trust, confirm_trust);
+        if (!trustCheck.ok) return errorResult(trustCheck.error);
+        const updateCheck = checkUpdatePermission(currentAuthStatus(), id);
+        if (!updateCheck.ok) return errorResult(updateCheck.error);
 
         // 公開前チェック。HIGH がある場合のみ confirm_security を要求する
         const gate = evaluateSecurityGate(html, {
@@ -394,8 +358,7 @@ const handler = createMcpHandler(
         }
 
         const result = await updateTool(id, html, { name, memo, trust });
-        const toolPath = result.trust ? "tool-trust" : "tool";
-        const url = `${getBaseUrl()}/${toolPath}/${id}`;
+        const url = `${getBaseUrl()}/${toolPath(result.trust)}/${id}`;
 
         await notifySlack({
           type: "update",
@@ -451,56 +414,12 @@ const handler = createMcpHandler(
         },
       },
       async ({ id, name, memo, trust, confirm_trust }) => {
-        if (trust && !confirm_trust) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    error:
-                      "trust: trueを指定する場合はconfirm_trust: trueも必要です。信頼モードはセキュリティ制限が無効化されます。ユーザーに確認を取ってから再実行してください。",
-                  },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-        if (isCacheId(id)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  { error: "import_gistは揮発モード（c_で始まるID）には使用できません。Gist IDを指定してください" },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
-        // import_gist は Gist 書き込みを伴うため認証必須
-        const authenticated = authContext.getStore()?.status === "authenticated";
-        if (!authenticated) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  { error: "import_gistの実行には認証が必要です。APIキーを設定してください" },
-                  null,
-                  2
-                ),
-              },
-            ],
-          };
-        }
+        const trustCheck = checkTrustConfirmation(trust, confirm_trust);
+        if (!trustCheck.ok) return errorResult(trustCheck.error);
+        const importCheck = checkImportGistPermission(currentAuthStatus(), id);
+        if (!importCheck.ok) return errorResult(importCheck.error);
         const result = await addMetadata(id, { name, memo, trust });
-        const toolPath = result.trust ? "tool-trust" : "tool";
-        const url = `${getBaseUrl()}/${toolPath}/${id}`;
+        const url = `${getBaseUrl()}/${toolPath(result.trust)}/${id}`;
 
         await notifySlack({
           type: "update",
@@ -614,8 +533,7 @@ const handler = createMcpHandler(
       },
       async ({ id, size }) => {
         const result = await getTool(id);
-        const toolPath = result.trust ? "tool-trust" : "tool";
-        const toolUrl = `${getBaseUrl()}/${toolPath}/${id}`;
+        const toolUrl = `${getBaseUrl()}/${toolPath(result.trust)}/${id}`;
         const qrSize = size ?? 300;
         const qrPageUrl = `${getBaseUrl()}/qr/${id}?size=${qrSize}`;
 

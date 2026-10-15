@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createTool, listRecentTools } from "@/lib/storage";
 import { checkAuth, unauthorizedResponse } from "@/lib/auth";
 import { notifySlack } from "@/lib/slack";
+import { resolveEphemeral, toolPath } from "@/lib/policy";
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +28,6 @@ export async function POST(request: NextRequest) {
   if (auth === "rejected") {
     return unauthorizedResponse();
   }
-  const authenticated = auth === "authenticated";
 
   try {
     const body = await request.json();
@@ -40,14 +40,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 匿名アクセスは揮発モード固定（永続モード=Gist書き込みは認証必須）
-    const finalEphemeral = !authenticated ? true : ephemeral;
+    const finalEphemeral = resolveEphemeral(auth, ephemeral);
 
     const result = await createTool(html, { name, memo, trust, ephemeral: finalEphemeral });
 
     const baseUrl = request.nextUrl.origin;
-    const toolPath = result.trust ? "tool-trust" : "tool";
-    const url = `${baseUrl}/${toolPath}/${result.id}`;
+    const url = `${baseUrl}/${toolPath(result.trust)}/${result.id}`;
 
     await notifySlack({
       type: "create",
