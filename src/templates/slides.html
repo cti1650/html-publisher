@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slides</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.css">
+  <!-- テーマは black / white / league / beige / night / serif / simple / solarized / moon / dracula / sky / blood から選べる -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/theme/white.css">
+  <style>
+    .deck-toolbar {
+      position: fixed;
+      right: 12px;
+      top: 12px;
+      z-index: 100;
+      display: flex;
+      gap: 6px;
+      opacity: 0.35;
+      transition: opacity 0.2s;
+    }
+    .deck-toolbar:hover,
+    .deck-toolbar:focus-within {
+      opacity: 1;
+    }
+    .deck-toolbar button {
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      background: #ffffffe6;
+      color: #1e293b;
+      font: 600 13px/1 system-ui, sans-serif;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    @media print {
+      .deck-toolbar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck-toolbar">
+    <button type="button" id="fullscreen-button" title="全画面表示（F キーでも可）">全画面</button>
+    <button type="button" id="pdf-button" title="印刷ダイアログで「PDFに保存」を選んでください">PDF保存</button>
+  </div>
+
+  <div class="reveal">
+    <div class="slides">
+      <!-- SLIDES:START -->
+      <section>
+        <h2>スライドのタイトル</h2>
+        <p>サブタイトル・発表者名</p>
+      </section>
+
+      <section>
+        <h3>アジェンダ</h3>
+        <ul>
+          <li class="fragment">背景</li>
+          <li class="fragment">提案</li>
+          <li class="fragment">次のアクション</li>
+        </ul>
+      </section>
+
+      <!-- 縦方向のサブスライドは section を入れ子にする -->
+      <section>
+        <section>
+          <h3>提案</h3>
+          <p>↓ キーで詳細へ</p>
+        </section>
+        <section>
+          <h3>提案の詳細</h3>
+          <p>スピーカーノートは S キーで表示できます</p>
+          <aside class="notes">ここに発表者用のメモを書く</aside>
+        </section>
+      </section>
+
+      <section>
+        <h3>まとめ</h3>
+        <p>ご清聴ありがとうございました</p>
+      </section>
+      <!-- SLIDES:END -->
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.js"></script>
+  <script>
+    // DECK_CONFIG は通常表示とPDF用の印刷表示で共有する
+    const DECK_CONFIG = {
+      hash: false,
+      slideNumber: "c/t",
+      transition: "slide",
+      // 印刷時に1スライド=1ページにする（fragment を展開して印刷）
+      pdfSeparateFragments: false,
+    };
+
+    const isPrintView = /print-pdf/i.test(location.search);
+    const deck = new Reveal(DECK_CONFIG);
+    deck.initialize().then(() => {
+      // trust モードで ?print-pdf 付きで開かれた場合は、レイアウト完了後に印刷ダイアログを出す
+      if (isPrintView) setTimeout(() => window.print(), 500);
+    });
+
+    document.getElementById("fullscreen-button").addEventListener("click", async () => {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch {
+        alert("この表示環境では全画面にできません。ブラウザの全画面表示（F11 / Ctrl+Cmd+F）を使ってください");
+      }
+    });
+
+    document.getElementById("pdf-button").addEventListener("click", () => {
+      // http(s) で直接開かれている（trust モード）なら ?print-pdf 付きで別タブに開くのが Reveal.js 公式の手順
+      if (/^https?:$/.test(location.protocol)) {
+        const url = new URL(location.href);
+        url.searchParams.set("print-pdf", "");
+        window.open(url.toString(), "_blank", "noopener");
+        return;
+      }
+      // iframe（about:srcdoc）ではクエリを付けて開き直せないため、印刷ビューで初期化し直す。
+      // 印刷が終わったら再読み込みして通常のスライド表示に戻す
+      window.addEventListener("afterprint", () => location.reload(), { once: true });
+      deck.destroy();
+      new Reveal({ ...DECK_CONFIG, view: "print" })
+        .initialize()
+        .then(() => setTimeout(() => window.print(), 500));
+    });
+  </script>
+</body>
+</html>

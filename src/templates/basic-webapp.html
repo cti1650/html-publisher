@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Basic Web App</title>
+  <!-- React 18 + Babel（React 19 はUMDビルド廃止のため18系を使用） -->
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.10/babel.min.js"></script>
+  <!-- Tailwind CSS v4 -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.4"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // trust: false の iframe 内ではブラウザへの保存も history API も使えないため、状態はメモリ上だけで持つ
+    const { useState } = React;
+
+    // ===== APP:START =====
+    function App() {
+      const [items, setItems] = useState([]);
+      const [text, setText] = useState("");
+
+      const add = (e) => {
+        e.preventDefault();
+        const value = text.trim();
+        if (!value) return;
+        setItems([...items, { id: Date.now(), text: value, done: false }]);
+        setText("");
+      };
+
+      const toggle = (id) =>
+        setItems(items.map((item) => (item.id === id ? { ...item, done: !item.done } : item)));
+
+      const remove = (id) => setItems(items.filter((item) => item.id !== id));
+
+      return (
+        <main className="mx-auto max-w-md p-4 sm:p-8">
+          <h1 className="mb-4 text-2xl font-bold">ToDo</h1>
+          <form onSubmit={add} className="mb-4 flex gap-2">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="やることを入力"
+              className="flex-1 rounded border border-slate-300 bg-white px-3 py-2"
+            />
+            <button className="rounded bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700">
+              追加
+            </button>
+          </form>
+          <ul className="space-y-2">
+            {items.map((item) => (
+              <li key={item.id} className="flex items-center gap-2 rounded bg-white p-3 shadow-sm">
+                <input type="checkbox" checked={item.done} onChange={() => toggle(item.id)} />
+                <span className={"flex-1 " + (item.done ? "text-slate-400 line-through" : "")}>
+                  {item.text}
+                </span>
+                <button onClick={() => remove(item.id)} className="text-sm text-red-600 hover:underline">
+                  削除
+                </button>
+              </li>
+            ))}
+          </ul>
+          {items.length === 0 && <p className="text-center text-slate-400">まだ何もありません</p>}
+        </main>
+      );
+    }
+    // ===== APP:END =====
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

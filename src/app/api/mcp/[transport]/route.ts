@@ -8,6 +8,7 @@ import { notifySlack } from "@/lib/slack";
 import { HOW_TO_USE_GUIDE } from "@/lib/guide";
 import { scanHtml } from "@/lib/security";
 import { evaluateSecurityGate } from "@/lib/security/gate";
+import { TEMPLATES, TEMPLATE_IDS, getTemplateInfo, loadTemplateHtml } from "@/lib/templates";
 
 function renderStatusBlock(cap: AuthCapabilities): string {
   const yes = "可";
@@ -87,6 +88,52 @@ const handler = createMcpHandler(
             {
               type: "text",
               text: JSON.stringify(cap, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    // 実装サンプル（テンプレート）一覧
+    server.registerTool(
+      "list_templates",
+      {
+        title: "List Templates",
+        description:
+          "【HTMLを書き始める前に確認を推奨】HTML Publisher で動作確認済みの実装サンプル（テンプレート）一覧を返します。シンプルなWebアプリ、スライド（Reveal.js + PDF保存 + 全画面）、Tampermonkey用UserScript/ブックマークレットの導入支援ページ、Chrome拡張機能のZIP生成ページがあります。依頼内容が useWhen に合うものがあれば get_template で本体を取得し、editPoints の箇所を書き換えて create_tool に渡してください。各テンプレートの trustRequired は security_check の判定と一致しています",
+        inputSchema: {},
+      },
+      async () => {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(TEMPLATES, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    // 実装サンプル（テンプレート）取得
+    server.registerTool(
+      "get_template",
+      {
+        title: "Get Template",
+        description:
+          "list_templates で選んだテンプレートのHTML本体と、書き換える箇所（editPoints）・trust の要否を返します。マーカー（*:START 〜 *:END）で囲まれた範囲を依頼内容に合わせて書き換え、それ以外の部分（コピー・ダウンロード・PDF保存などの共通処理）は原則そのまま使ってください",
+        inputSchema: {
+          id: z.enum(TEMPLATE_IDS).describe("テンプレートID（list_templates の id）"),
+        },
+      },
+      async ({ id }) => {
+        const info = getTemplateInfo(id);
+        const html = await loadTemplateHtml(id);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ ...info, html }, null, 2),
             },
           ],
         };
