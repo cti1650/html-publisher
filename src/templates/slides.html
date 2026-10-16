@@ -89,6 +89,12 @@
       hash: false,
       slideNumber: "c/t",
       transition: "slide",
+      // Reveal.js 5 は画面幅 435px 未満で自動的に「スクロール表示」に切り替わる。
+      // スマホ縦向きでスワイプが効かなくなり、回転のたびに表示が切り替わってスライドが消えるほか、
+      // iframe（trust: false）では sessionStorage が使えずエラーになるため無効にする
+      scrollActivationWidth: null,
+      // スワイプでの切り替え（Reveal.js の既定でも有効だが、明示しておく）
+      touch: true,
       // 印刷時に1スライド=1ページにする（fragment を展開して印刷）
       pdfSeparateFragments: false,
     };
@@ -99,6 +105,23 @@
       // trust モードで ?print-pdf 付きで開かれた場合は、レイアウト完了後に印刷ダイアログを出す
       if (isPrintView) setTimeout(() => window.print(), 500);
     });
+
+    // タップでの切り替え（タッチ操作のときだけ）。左3分の1で前へ、それ以外で次へ。
+    // マウスのクリックは文字の選択などと衝突するため対象にしない
+    let lastPointerType = "mouse";
+    document.addEventListener("pointerdown", (event) => { lastPointerType = event.pointerType; }, true);
+    deck.getRevealElement().addEventListener("click", (event) => {
+      if (lastPointerType !== "touch" || isPrintView) return;
+      if (event.target.closest("a, button, input, textarea, select, label, video, audio, iframe, [contenteditable], .controls")) return;
+      const rect = deck.getRevealElement().getBoundingClientRect();
+      if (event.clientX - rect.left < rect.width / 3) deck.prev();
+      else deck.next();
+    });
+
+    // 画面の回転後にレイアウトを計算し直す（回転直後はブラウザによって画面サイズの反映が遅れるため少し待つ）
+    const relayout = () => setTimeout(() => deck.layout(), 300);
+    if (screen.orientation) screen.orientation.addEventListener("change", relayout);
+    window.addEventListener("orientationchange", relayout);
 
     document.getElementById("fullscreen-button").addEventListener("click", async () => {
       try {
