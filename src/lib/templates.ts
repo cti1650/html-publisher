@@ -52,7 +52,7 @@ export const TEMPLATES: readonly TemplateInfo[] = [
     id: "slides",
     title: "スライド（Reveal.js + PDF保存 + 全画面）",
     description:
-      "Reveal.js 5 のスライド。右上に「全画面」「PDF保存」ボタンを持つ。PDF保存は印刷ダイアログで「PDFに保存」を選ぶ方式",
+      "Reveal.js 5 のスライド。右上に「全画面」「PDF保存」ボタンを持つ。PDF保存は印刷ダイアログで「PDFに保存」を選ぶ方式。スマホではスワイプ・タップ（左3分の1で前へ、それ以外で次へ）で切り替えられ、縦横の回転にも追従する",
     useWhen: "発表資料・説明資料・スライド形式のまとめを作るとき",
     trustRequired: false,
     trustNote:
@@ -60,6 +60,7 @@ export const TEMPLATES: readonly TemplateInfo[] = [
     editPoints: [
       "`<!-- SLIDES:START -->` 〜 `<!-- SLIDES:END -->` の <section> を差し替える（縦方向のサブスライドは section を入れ子）",
       "テーマを変える場合は theme/white.css のファイル名を変更する",
+      "DECK_CONFIG の scrollActivationWidth: null は消さない（消すとスマホ縦向きで自動的にスクロール表示になり、スワイプで切り替えられず、iframe 内ではスライドが表示されなくなる）",
       "<title> を変更する",
     ],
   },
