@@ -164,6 +164,24 @@ describe("Gist API との連携", () => {
     await expect(getGist(GIST_ID)).rejects.toThrow("Gist not found");
   });
 
+  it.each(["../user", "%2e%2e/user", "abc?per_page=1", "abc/../../user", ""])(
+    "Gist ID の形式でない %j は GitHub に問い合わせずに Gist not found にする",
+    async (id) => {
+      await expect(getGist(id)).rejects.toThrow("Gist not found");
+      await expect(updateGist(id, BASE_HTML)).rejects.toThrow("Gist not found");
+      expect(requests).toHaveLength(0);
+    }
+  );
+
+  it("16進数のID・古い10進数のIDは受け付ける", async () => {
+    await getGist(GIST_ID);
+    await getGist("1234567");
+    expect(requests.map((r) => r.url)).toEqual([
+      `https://api.github.com/gists/${GIST_ID}`,
+      "https://api.github.com/gists/1234567",
+    ]);
+  });
+
   it("GITHUB_TOKEN が無ければ通信せずにエラーにする", async () => {
     vi.stubEnv("GITHUB_TOKEN", "");
     await expect(createGist(BASE_HTML)).rejects.toThrow("GITHUB_TOKEN is not set");
