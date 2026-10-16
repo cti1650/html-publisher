@@ -1,4 +1,6 @@
-const CACHE_NAME = "html-publisher-v1";
+// v2: キャッシュ優先をやめ、すべてネットワーク優先に変更。
+// 名前を変えることで、activate 時に v1 を含む既存キャッシュがすべて削除される
+const CACHE_NAME = "html-publisher-v2";
 
 // インストール時にキャッシュするアセット
 const STATIC_ASSETS = ["/icon.svg"];
@@ -58,18 +60,18 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => {
-          // オフライン時はキャッシュから取得
-          return caches.match(event.request);
-        })
+        .catch(() => matchOwnCache(event.request))
     );
     return;
   }
 
-  // その他の静的アセットはキャッシュ優先
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
-  );
+  // その他もネットワーク優先にし、キャッシュはオフライン時の代替にだけ使う。
+  // キャッシュ優先にすると、同一オリジンで動く trust モードのページが Cache API を
+  // 書き換えた場合に、その内容が通常のページとして配信されてしまうため
+  event.respondWith(fetch(event.request).catch(() => matchOwnCache(event.request)));
 });
+
+// caches.match() はオリジン内の全キャッシュを検索するため、この Service Worker が管理するキャッシュに限定する
+function matchOwnCache(request) {
+  return caches.open(CACHE_NAME).then((cache) => cache.match(request));
+}

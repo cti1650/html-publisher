@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 
 export type AuthStatus = "authenticated" | "anonymous" | "rejected";
@@ -16,6 +16,13 @@ export function generateApiKey(secret: string, githubToken: string): string {
   return createHash("sha256")
     .update(secret + githubToken)
     .digest("hex");
+}
+
+// 処理時間から一致した文字数を推測されないよう、定数時間で比較する
+function safeEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 export function checkAuth(request: NextRequest | Request): AuthStatus {
@@ -38,7 +45,7 @@ export function checkAuth(request: NextRequest | Request): AuthStatus {
   }
 
   const expectedKey = generateApiKey(secret, githubToken);
-  return providedKey === expectedKey ? "authenticated" : "rejected";
+  return safeEqual(providedKey, expectedKey) ? "authenticated" : "rejected";
 }
 
 export function isAuthenticated(request: NextRequest | Request): boolean {

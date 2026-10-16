@@ -54,6 +54,12 @@ describe("checkAuth", () => {
     expect(checkAuth(request({ header: "wrong" }))).toBe("rejected");
   });
 
+  it("長さが違うキー・前方一致するだけのキーは rejected", () => {
+    expect(checkAuth(request({ query: VALID_KEY.slice(0, -1) }))).toBe("rejected");
+    expect(checkAuth(request({ query: VALID_KEY + "0" }))).toBe("rejected");
+    expect(checkAuth(request({ query: "あ".repeat(64) }))).toBe("rejected");
+  });
+
   it("クエリとヘッダーの両方がある場合はクエリが優先される", () => {
     expect(checkAuth(request({ query: "wrong", header: VALID_KEY }))).toBe("rejected");
     expect(checkAuth(request({ query: VALID_KEY, header: "wrong" }))).toBe("authenticated");

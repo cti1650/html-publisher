@@ -2,6 +2,16 @@ import * as prettier from "prettier";
 
 const GITHUB_API = "https://api.github.com";
 
+// Gist ID は16進数（古いGistは10進数）のみ。URLに埋め込むため、
+// "../" 等で Gist 以外の GitHub API にトークン付きリクエストが飛ばないよう形式を限定する
+const GIST_ID_PATTERN = /^[0-9a-f]{1,64}$/i;
+
+function assertGistId(id: string): void {
+  if (!GIST_ID_PATTERN.test(id)) {
+    throw new Error("Gist not found");
+  }
+}
+
 interface GistResponse {
   id: string;
   html_url: string;
@@ -174,6 +184,8 @@ export async function getGist(id: string): Promise<{
   if (!token) {
     throw new Error("GITHUB_TOKEN is not set");
   }
+  assertGistId(id);
+
 
   const response = await fetch(`${GITHUB_API}/gists/${id}`, {
     headers: {
@@ -226,6 +238,8 @@ export async function updateGist(
   if (!token) {
     throw new Error("GITHUB_TOKEN is not set");
   }
+  assertGistId(id);
+
 
   // 入力HTMLから既存のメタ情報を抽出
   const existingMeta = extractMetaFromHtml(html);
